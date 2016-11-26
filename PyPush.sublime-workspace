@@ -1,0 +1,588 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"_no",
+				"_notifyCb"
+			],
+			[
+				"ser",
+				"serivceId"
+			],
+			[
+				"se",
+				"setCharacteristic"
+			],
+			[
+				"dev",
+				"devId"
+			],
+			[
+				"c",
+				"characteristic"
+			],
+			[
+				"conn",
+				"connId"
+			],
+			[
+				"context",
+				"contextmanager"
+			],
+			[
+				"ne",
+				"neighbours"
+			],
+			[
+				"n",
+				"neighbours"
+			],
+			[
+				"GrOsmo",
+				"GrOsmoSDRInterface"
+			],
+			[
+				"w",
+				"writerow"
+			],
+			[
+				"tab",
+				"table_data"
+			],
+			[
+				"th",
+				"this_row"
+			],
+			[
+				"find",
+				"find_all"
+			],
+			[
+				"ge",
+				"getFn"
+			],
+			[
+				"url",
+				"urllib"
+			],
+			[
+				"fo",
+				"fobj"
+			],
+			[
+				"fn",
+				"fnIfMissing"
+			],
+			[
+				"in",
+				"increment"
+			],
+			[
+				"wr",
+				"writer"
+			],
+			[
+				"di",
+				"dictEl"
+			],
+			[
+				"writer",
+				"writerow"
+			],
+			[
+				"ite",
+				"iter_input"
+			],
+			[
+				"out",
+				"outFname"
+			],
+			[
+				"ta",
+				"tailPairs"
+			],
+			[
+				"def",
+				"defaultdict"
+			],
+			[
+				"da",
+				"data_post_whitenA"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "PyPush/PyPush.py",
+			"settings":
+			{
+				"buffer_size": 2565,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "examples/push_any.py",
+			"settings":
+			{
+				"buffer_size": 271,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "PyPush/ble/pyBle.py",
+			"settings":
+			{
+				"buffer_size": 2979,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "PyPush/const.py",
+			"settings":
+			{
+				"buffer_size": 232,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "",
+	"build_system_choices":
+	[
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"console":
+	{
+		"height": 0.0,
+		"history":
+		[
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/Users/ilo/Devel/PyPush",
+		"/Users/ilo/Devel/PyPush/examples",
+		"/Users/ilo/Devel/PyPush/PyPush",
+		"/Users/ilo/Devel/PyPush/PyPush/ble",
+		"/Users/ilo/Devel/PyPush/tests"
+	],
+	"file_history":
+	[
+		"/Users/ilo/Devel/PyPush/bin/update_raspberry.sh",
+		"/Users/ilo/Devel/PyPush/PyPush/consts.py",
+		"/Users/ilo/Devel/PyPush/PyPush/__init__.py",
+		"/Users/ilo/Devel/PyPush/PyPush/ble/__init__.py",
+		"/Users/ilo/Downloads/test3.txt",
+		"/Users/ilo/Downloads/test2.py",
+		"/Users/ilo/Downloads/test.py",
+		"/Users/ilo/OneDrive/tmp/scopus/A-speech-content-authentication-algorithm-based-on-DFRFT_2016_Tiedao-XuebaoJournal-of-the-China-Railway-Society.html",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSdrInterface/api.h",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSdrInterface/GrOsmoSDRInterface.hpp",
+		"/Users/ilo/Devel/SoapyOsmo/GrOsmoSDRRegister.in.cpp",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/fcd/fcd_source_c.cc",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrFcdPP/register_fcdpp.cc",
+		"/Users/ilo/Devel/SoapyOsmo/CMakeLists.txt",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/file/file_sink_c.cc",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/arg_helpers.h",
+		"/Users/ilo/Devel/SoapyOsmo/update_gr_osmosdr.sh",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/rtl/rtl_source_c.cc",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSdrInterface/GrOsmoSDRInterface.cc",
+		"/Users/ilo/Devel/SoapyOsmo/compat/lib/GrOsmoSDRInterface/GrOsmoSDRStreamer.cc",
+		"/Users/ilo/Devel/SoapyOsmo/compat/lib/GrOsmoSDRInterface/GrOsmoSDRInterface.cc",
+		"/Users/ilo/Devel/SoapyOsmo/compat/include/GrOsmoSdrInterface/api.h",
+		"/Users/ilo/Devel/SoapyOsmo/scripts/auto_upload_osx.sh",
+		"/Users/ilo/Devel/SoapyOsmo/compat/include/GrOsmoSdrInterface.h",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSDRInterface/GrOsmoSDRInterface.cc",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSDRInterface/api.h",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/fcd/fcd_source_c.h",
+		"/Users/ilo/Devel/SoapyOsmo/GrOsmoSDRInterface.hpp",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrFcdPP/GrOsmoHierBlock2SDRInterface.hpp",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSDRInterface/GrOsmoSDRInterface.hpp",
+		"/Users/ilo/Devel/SoapyOsmo/components/GrOsmoSDRInterface/GrOsmoSDRStreamer.hpp",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/source_iface.h",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/sink_iface.h",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/rtl/rtl_source_c.h",
+		"/Users/ilo/Devel/SoapyOsmo/compat/include/gnuradio/hier_block2.h",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/lib/fcd/CMakeLists.txt",
+		"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr/cmake/Modules/FindGnuradioFCDPP.cmake",
+		"/Users/ilo/Devel/SoapyOsmo/scripts/build.sh",
+		"/Users/ilo/Devel/SoapyOsmo/components/register_GNURADIO_FCDPP.cc",
+		"/Users/ilo/Devel/SoapyOsmo/fcd/fcdpp.cc",
+		"/Users/ilo/Devel/SoapyOsmo/SoapyOsmo.sublime-project",
+		"/Users/ilo/Devel/SoapyFCD/scripts/auto_upload_osx.sh",
+		"/Users/ilo/Devel/SoapyFCD/scripts/build.sh",
+		"/Users/ilo/Devel/SoapyFCD/src/CMakeLists.txt",
+		"/Users/ilo/Devel/SoapyFCD/src/FindFCDProPlus.txt",
+		"/Users/ilo/Devel/SoapyFCD/SoapyFCD.sublime-project",
+		"/Users/ilo/Devel/SoapyFCD/LICENSE",
+		"/Users/ilo/Devel/SoapyFCD/README.md",
+		"/Users/ilo/OneDrive/Documents/CLoSeR/Literature/useful_links.txt",
+		"/Users/ilo/OneDrive/BoughtByMany questions",
+		"/Users/ilo/Devel/travel_tradeoff/collect.py",
+		"/Users/ilo/Downloads/response-export.json",
+		"/Users/ilo/Documents/1Password 2016-08-07, 02_12 pm (634 items and 12 folders).txt",
+		"/Users/ilo/OneDrive/Documents/IVHM Centre/OSA-EAI_3.2.3a/D-CRIS/D-ReferenceData/A - XML with CRIS Complete Schema/[OSA-EAI-CRIS-REF-XML-V03-2]CRIS_Reference_Library_V3-2-3[09-Jan-2012].xml",
+		"/Users/ilo/Devel/ivhm_km/code/util/get_eai_consts.py",
+		"/Users/ilo/OneDrive/Documents/IVHM Centre/data/Test_Clogged_Filter_15-05-22_1729_001.lvm",
+		"/Users/ilo/Downloads/refs.txt",
+		"/Users/ilo/Devel/DAC_OSX_auto_quality/README.txt",
+		"/Users/ilo/Devel/DAC_OSX_auto_quality/test.sh",
+		"/Users/ilo/Devel/DAC_OSX_auto_quality/org.orlovs.dac.plist",
+		"/Users/ilo/Devel/closer_mk0/open_dev_chrome.sh",
+		"/Users/ilo/Downloads/arc-export-4-7-2016-export",
+		"/Users/ilo/Devel/Leigh/do_grind.py",
+		"/Users/ilo/Devel/Leigh/csv_export.csv",
+		"/Users/ilo/Downloads/OSA-EAI_3.2.3a/D-CRIS/D-ReferenceData/A - XML with CRIS Complete Schema/[OSA-EAI-CRIS-REF-XML-V03-2]CRIS_Reference_Library_V3-2-3[09-Jan-2012].xml",
+		"/Users/ilo/Downloads/OSA-EAI_3.2.3a/D-CRIS/D-ReferenceData/B - Populated Databases/SQLServer/Step4_SQLServer_Create_Ref_Data.sql",
+		"/Users/ilo/Downloads/Sine Signal LVM/sayndesyn.lvm",
+		"/Users/ilo/Devel/closer_mk0/bitbucket-pipelines.yml",
+		"/Users/ilo/Dropbox/IVHM KM - Shared/3. Modules/1. Rig Data Management/2. Data Samples/Test_Clogged_Filter_15-05-29_1522_001.lvm",
+		"/Users/ilo/Downloads/cluster_issues.py"
+	],
+	"find":
+	{
+		"height": 40.0
+	},
+	"find_in_files":
+	{
+		"height": 117.0,
+		"where_history":
+		[
+			"/Users/ilo/Devel/SoapyOsmo/gr-osmosdr",
+			"/Users/ilo/Devel/SoapyOsmo/compat/include"
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"startScan",
+			"BASE_URL",
+			"createOption",
+			"DADataEvent",
+			"OutPortSet",
+			"port",
+			"self",
+			"arg_helpers.h",
+			"self[(][)]",
+			"self()",
+			"self",
+			"connect",
+			"enable_",
+			"connect",
+			"self",
+			"self(",
+			"osmosdr",
+			"INCLUDE_DIRE",
+			"Boost_LIBRARIES",
+			"gnuradio",
+			"osmosdr_srcs",
+			"GrOsmoSDRStreamer",
+			"work",
+			"read",
+			"start",
+			"GrOsmoSDRStreamer",
+			"_sourceBlock",
+			"set_g",
+			"_src_v2",
+			"sync",
+			"_src_v2",
+			"sync_block",
+			"_block",
+			"sync_block",
+			"_sourceBlock",
+			"source_iface",
+			"_source",
+			"SourceType",
+			"GrOsmoSDRInterface",
+			"OSMO_MODULE_SOURCES",
+			"GrOsmoSDRStreamer",
+			"target",
+			"TARGET",
+			"@TARGET@",
+			"GNURADIO_FCDPP_source_c",
+			"dongle_type",
+			"OSMO_MODULE_LIBRARIES",
+			"GNURADIO_FCDPP_source_c",
+			"OSMO_MODULE_SOURCES",
+			"GrOsmoSDRModule",
+			"GR_INCLUDE_SUBDIRECTORY",
+			"GR_OSMOSDR_APPEND_LIBS",
+			"Support",
+			"GNURADIO_FCDPP_source_c",
+			"install",
+			"chess",
+			"OSMO_MODULE_SOURCES",
+			"*.h",
+			"OSMO_MODULE_LIBRARIES",
+			"OSMO_MODULE_SOURCE_DIR",
+			"EXISTS",
+			"GrOsmoSDRModule",
+			"HAS_SINK",
+			"register_",
+			"GrOsmoSDRModule",
+			"LIBAIRSPY",
+			"USE_OSMO_BLADERF",
+			"ENABLE_RFSPACE",
+			"ENABLE_AIRSPY",
+			"SOAPY_SDR_MODULE_UTIL",
+			"find_pa",
+			"eu_type_code",
+			"type_code",
+			"segment",
+			"meter",
+			"second",
+			"<!--.*func",
+			"func",
+			"monitor",
+			"data_c",
+			"data_co",
+			"data_",
+			"aproc",
+			"proc__",
+			"proc_",
+			"Charleton, Paul"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": true,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"groups":
+	[
+		{
+			"selected": 0,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "PyPush/PyPush.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2565,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								1736,
+								1736
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 1089.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "examples/push_any.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 271,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								31,
+								31
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "PyPush/ble/pyBle.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 2979,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								2812,
+								2812
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 1787.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "PyPush/const.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 232,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								17
+							]
+						],
+						"settings":
+						{
+							"auto_name": "",
+							"syntax": "Packages/Python/Python.sublime-syntax"
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 32.0
+	},
+	"input":
+	{
+		"height": 43.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "",
+	"project": "PyPush.sublime-project",
+	"replace":
+	{
+		"height": 60.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_symbol":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 255.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

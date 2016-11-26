@@ -1,0 +1,11 @@
+MicrobotServiceId = "1831"
+PushServiceId = "1821"
+InfoServiceId = "180A"
+
+InitAddr = "2A98"
+DeviceExtend = "2A11"
+DeviceRetract = "2A12"
+LedFlash = "2A13"
+#UNKNOWN = "2A16"
+DeviceGetCalibration = "2A35"
+DeviceSetCalibration = "2A53"
