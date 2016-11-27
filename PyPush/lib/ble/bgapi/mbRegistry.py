@@ -62,19 +62,11 @@ class MicrobotRegistry(object):
 		self._lock = threading.Lock()
 		self._bots = {}
 		self._maxAge = maxAge
+		self._scanCallbacks = []
 
-	def getBots(self, maxAge=0):
-		if maxAge > 0:
-			minTs = time.time() - maxAge
-		else:
-			minTs = 0
-
-		out = []
-		for mb in tuple(self._bots.values()):
-			if mb._lastSeen >= minTs:
-				out.append(mb)
-
-		return tuple(out)
+	def onScanCallback(self, callback):
+		assert callable(callback), callback
+		self._scanCallbacks.append(callback)
 
 	def onScanEvent(self, evt):
 		"""This method is called when microbot is discovered via BLE scan."""
@@ -87,6 +79,13 @@ class MicrobotRegistry(object):
 				self._bots[addr] = newBot
 		else:
 			bot._update(newBot)
+
+		evtBot = self._bots[addr]
+		
+		# trigger onScan callbacks
+		for cb in self._scanCallbacks:
+			cb(evtBot)
+
 		self._gcOldMicrobots()
 
 	def _botFromEvt(self, evt):
@@ -96,8 +95,8 @@ class MicrobotRegistry(object):
 		name = "Unknown Microbot ({:02X}:{:02X})".format(*bOrder.nStrToHBytes(addr[:2]))
 
 		for el in evt.adv_payload:
-			if el["Type"] == "BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA":
-				data = el["Data"]
+			if el.type_name == "BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA":
+				data = el.data
 				if data.startswith("\x00\x00"):
 					# This is microbot's real name
 					name = data[2:]

@@ -4,8 +4,9 @@ import logging
 import time
 import collections
 import threading
+import contextlib
 
-from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException
+from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException, RemoteError, Timeout
 
 from .. import iApi
 
@@ -37,6 +38,31 @@ class BgNotifyHandle(iApi.iNotifyHandle):
 		"""Method that is called when new value becomes available."""
 		for cb in tuple(self._callbacks):
 			cb(value)
+
+def retry_call_if_fails(connection, func, attempts, fail_delay=3, delayed_unlock=0.5, retry_on_remote_err=(), retry_on_timeout=False):
+	attempts_left = attempts
+	while True:
+		attempts_left -= 1
+
+		try:
+			with connection.delayedUnlock(delayed_unlock):
+				rv = func()
+		except RemoteError as err:
+			if err.code in retry_on_remote_err and attempts_left > 0: # Device is in the wrong state.
+				pass
+			else:
+				raise
+		except Timeout:
+			if retry_on_timeout:
+				pass
+			else:
+				raise
+		else:
+			return rv
+
+		# Exception happened
+		time.sleep(fail_delay)
+
 
 class _ConnNotifyHub(object):
 
@@ -71,8 +97,11 @@ class _ConnNotifyHub(object):
 				for handle in conn.get_handles_by_uuid(char.uuid):
 					conn.assign_attrclient_value_callback(handle, _getCbFn())
 
-				with conn.delayedUnlock(0.5):
-					conn.characteristic_subscription(char.gatt, indicate=False, notify=shouldBeActive)
+				retry_call_if_fails(
+					conn, 
+					lambda: conn.characteristic_subscription(char.gatt, indicate=False, notify=shouldBeActive, timeout=10),
+					attempts=5, retry_on_remote_err=(0x0181, ), retry_on_timeout=True
+				)
 
 				# State synced.
 				self._handles[key][0] = shouldBeActive
@@ -106,28 +135,34 @@ class BgConnection(iApi.iConnection):
 		return self._mb
 
 	def isActive(self):
-		return self._bleConn is not None
+		return (self._bleConn is not None) and self._bleConn.is_connected()
 
 	def close(self):
-		with self._ble.transaction():
+		with self.transaction():
 			if self.isActive():
-				self._bleConn.disconnect()
-				self._bleConn = None
+				self._ble.disconnect(self._bleConn.handle)
 				self._log.info("BgConnection {} closed.".format(self))
+		self._bleConn = None
 
 	def getAllServices(self):
 		assert self.isActive()
 		return [self._humanServiceName(el) for el in self._bleConn.get_services()]			
 
-	def getAllCharacteristics(self, serviceUUID):
+	def readAllCharacteristics(self):
 		assert self.isActive()
 		
-		srv = self._findService(serviceUUID)
+		rv = {}
 
-		for char in self._serviceToCharacteristics[srv.uuid]:
-			print char
-			print self._bleConn.read_by_handle(char.handle)
-		1/0
+		for srv in self._bleConn.get_services():
+			rv[self._humanServiceName(srv)] = srvData = {}
+			for char in self._serviceToCharacteristics[srv.uuid]:
+				if char.gatt.is_readable():
+					self._bleConn.read_by_handle(char.gatt.handle+1)
+					value = char.gatt.value
+				else:
+					value = None
+				srvData[char.human_uuid] = value
+
 		return rv
 
 	def onNotify(self, serviceId, characteristicId, callback=None):
@@ -140,15 +175,31 @@ class BgConnection(iApi.iConnection):
 		return rv
 
 	def write(self, serviceId, characteristicId, data):
+		assert self.isActive()
 		char = self._findCharacteristic(serviceId, characteristicId)
 		assert char.gatt.is_writable(), char
-		with self._bleConn.delayedUnlock(0.5):
-			self._bleConn.write_by_uuid(char.uuid, data, timeout=5)
+		return retry_call_if_fails(
+			self._bleConn, 
+			lambda: self._bleConn.write_by_uuid(char.uuid, data, timeout=15),
+			attempts=5, retry_on_remote_err=(0x0181, ),
+			retry_on_timeout=True
+		)
+
+	def read(self, serviceId, characteristicId, timeout=5):
+		char = self._findCharacteristic(serviceId, characteristicId)
+		assert char.gatt.is_readable(), char
+		self._bleConn.read_by_handle(char.gatt.handle+1, timeout=timeout)
+		return char.gatt.value
+
+	@contextlib.contextmanager
+	def transaction(self):
+		with self._ble.transaction():
+			yield
 
 	def _open(self):
 		"""Initiate the connection."""
 		assert not self.isActive()
-		with self._ble.transaction():
+		with self.transaction():
 			conn = self._ble.connect(self._mb.getApiTarget(), timeout=10)
 			self._bleConn = self._ble.getChildLock(conn)
 			self._initBleConnection(self._bleConn)
@@ -174,16 +225,26 @@ class BgConnection(iApi.iConnection):
 	def _initBleConnection(self, conn):
 		"""This method initialises internal state of the BLE connection by populating its internal dictionaries."""
 		with conn.transaction():
-			conn.read_by_group_type(GATTService.PRIMARY_SERVICE_UUID)
-			conn.read_by_group_type(GATTService.SECONDARY_SERVICE_UUID)
+			conn.read_by_group_type(GATTService.PRIMARY_SERVICE_UUID, timeout=10)
+			#conn.read_by_group_type(GATTService.SECONDARY_SERVICE_UUID)
 			
 			oldChars = frozenset(el.handle for el in conn.get_characteristics())
 
 			for service in conn.get_services():
 				conn.find_information(service)
-				conn.read_by_type(service, GATTCharacteristic.CHARACTERISTIC_UUID, timeout=10)
-				conn.read_by_type(service, GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG, timeout=10)
-				conn.read_by_type(service, GATTCharacteristic.USER_DESCRIPTION, timeout=10)
+				for serviceType in (
+					GATTCharacteristic.CHARACTERISTIC_UUID,
+					GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
+					GATTCharacteristic.USER_DESCRIPTION,
+				):
+					try:
+						conn.read_by_type(service, serviceType, timeout=10)
+					except RemoteError as err:
+						if err.code == 0x040A:
+							# Attribute not found. Seems to be occasional occurence with microbots.
+							pass
+						else:
+							raise
 
 				allChars = conn.get_characteristics()
 				newChars = frozenset(el.handle for el in allChars)

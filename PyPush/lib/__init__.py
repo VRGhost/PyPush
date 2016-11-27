@@ -1,6 +1,11 @@
 """Top-level API for the PyPush library."""
 
-from . import ble
-from . import PyPush as _PyPushModule
+from . import (
+	ble,
+	exceptions,
+	iLib,
+)
 
-PyPush = _PyPushModule.PyPush
+from . import hub as _hubModule
+
+PushHub = _hubModule.PushHub

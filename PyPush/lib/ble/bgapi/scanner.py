@@ -3,6 +3,7 @@ import threading
 import datetime
 import time
 
+from . import const
 
 class _ScanThread_(threading.Thread):
 
@@ -31,8 +32,10 @@ class _ScanThread_(threading.Thread):
 
 class Scanner(object):
 
-	def __init__(self, ble, mbRegistry):
-		self._registry = mbRegistry
+	def __init__(self, ble, onScanCb):
+		assert callable(onScanCb), onScanCb
+		self._myUUID = ble.get_ble_address()
+		self._cb = onScanCb
 		self._scan = _ScanThread_(ble, 3600, self._onNewScanResult)
 		self._scan.start()
 
@@ -43,12 +46,15 @@ class Scanner(object):
 		* THIS METHOD IS EXECUTED IN A CHILD THREAD *
 		"""
 		if self._isMicrobot(evt):
-			self._registry.onScanEvent(evt)
+			self._cb(evt)
 
 	def _isMicrobot(self, evt):
 		evt.parse_advertisement_data()
 		for el in evt.adv_payload:
-			if el["Type"] == "BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME" and el["Data"] == "mibp":
+			if el.type_name == "BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME" and el.data == "mibp":
+				return True
+			if el.type_code == const.MB_PAIRED_WITH_ANNOUNCEMENT and el.data == self._myUUID[-4:]:
+				# Microbots have this appearing when they've been pairted with someting
 				return True
 		# else
 		return False
