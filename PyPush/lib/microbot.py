@@ -29,7 +29,7 @@ class MicrobotPush(iLib.iMicrobot):
 		self._bleMb = bleMicrobot
 		self._keyDb = keyDb
 		self._mutex = threading.RLock()
-		self._notifiedChars = {} # uid -> value
+		self._notifyData = {} # uid -> value
 		self._notifyDaemons = []
 
 	def connect(self):
@@ -57,12 +57,18 @@ class MicrobotPush(iLib.iMicrobot):
 				raise exceptions.NotPaired(status, msg)
 
 			# set up notification daemons
-			self._notifyDaemons.append(
-				self._conn().onNotify(
-					const.PushServiceId, const.DeviceStatus,
-					lambda data: self._notifiedChars.__setitem__(const.DeviceStatus, data)
+			conn = self._conn()
+			for (serviceID, charId) in [
+				(const.PushServiceId, const.DeviceStatus),
+			]:
+				self._notifyDaemons.append(
+					conn.onNotify(
+						serviceID, charId,
+						lambda data: self._notifyData.__setitem__(charId, data)
+					)
 				)
-			)
+				# Perform the first read to populate field with its current value
+				self._notifyData[charId] = conn.read(serviceID, charId)
 
 	def disconnect(self):
 		with self._mutex:
@@ -164,7 +170,7 @@ class MicrobotPush(iLib.iMicrobot):
 		)
 
 	def isRetracted(self):
-		status = self._notifiedChars.get(const.DeviceStatus)
+		status = self._notifyData.get(const.DeviceStatus)
 		if status:
 			rv = (status[1] == "\x00")
 		else:
