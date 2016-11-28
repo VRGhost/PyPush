@@ -1,0 +1,2 @@
+# bgapi ## Use my fork of bgapi for the moment - it has some important fixes.
+git+git://github.com/VRGhost/bgapi.git#egg=bgapi
