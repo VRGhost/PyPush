@@ -1,4 +1,4 @@
-# Open Source Push Server
+# Open Source Microbot Push Server
 
 [![Build Status](https://travis-ci.org/VRGhost/PyPush.svg?branch=master)](https://travis-ci.org/VRGhost/PyPush)
 

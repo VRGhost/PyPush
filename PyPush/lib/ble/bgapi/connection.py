@@ -165,7 +165,7 @@ class BgConnection(iApi.iConnection):
 
 		return rv
 
-	def onNotify(self, serviceId, characteristicId, callback=None):
+	def onNotify(self, serviceId, characteristicId, callback):
 		assert self.isActive()
 		service = self._findService(serviceId)
 		char = self._findCharacteristic(serviceId, characteristicId)

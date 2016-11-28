@@ -3,7 +3,11 @@ import collections
 import mock
 import pytest
 
+from bgapi.module import RemoteError
+
 import PyPush.lib.ble.bgapi.connection as ConMod
+
+STR_TO_HEX = "PyPush.lib.ble.bgapi.bOrder.nStrToHHex"
 
 ServiceMock = collections.namedtuple("ServiceMock", ["uuid"])
 CharacteristicMock = collections.namedtuple(
@@ -12,7 +16,7 @@ CharacteristicMock = collections.namedtuple(
 def noop1(arg):
 	return arg
 
-@mock.patch("PyPush.lib.ble.bgapi.bOrder.nStrToHHex", noop1) # prevents service UUID translation
+@mock.patch(STR_TO_HEX, noop1) # prevents service UUID translation
 def test_connection_open():
 	mb = mock.MagicMock() # Microbot object
 	ble = mock.MagicMock() # BlueGiga BLE Client object.
@@ -82,3 +86,121 @@ def test_connection_open():
 
 	with pytest.raises(KeyError):
 		conn._findCharacteristic("SER_1", "CHAR:4")
+
+def get_mocked_connection():
+	"""
+	Creates an openable `BgConnection`.
+
+	The connection contains a single service "SERV" with one characteristics "CHAR"
+	when opened.
+	"""
+	mb = mock.MagicMock() # Microbot object
+	ble = mock.MagicMock() # BlueGiga BLE Client object.
+	bleConn = ble.getChildLock.return_value
+	Service = ServiceMock("SERV")
+	Char = mock.Mock()
+	Char.uuid = "CHAR"
+	Char.handle = 10
+
+	def _charRvIter():
+		yield ()
+		yield (Char, )
+
+	ble.getChildLock.return_value.get_services.return_value = (Service, )
+	bleConn.get_characteristics.side_effect = _charRvIter().next
+
+	bleConn.reset_mock()
+
+	return {
+		"service": Service,
+		"char": Char,
+		"connection": ConMod.BgConnection(mb, ble),
+		"bleConnection": bleConn,
+	}
+
+@mock.patch(STR_TO_HEX, noop1)
+def test_ok_write():
+	conn = get_mocked_connection()
+	conn["char"].is_writable.return_value = True
+	conn["connection"]._open()
+	conn["connection"].write("SERV", "CHAR", 42)
+	conn["bleConnection"].write_by_uuid.assert_called_once_with(
+		"CHAR", 42, timeout=15)
+
+	conn["bleConnection"].reset_mock()
+	conn["connection"].write("SERV", "CHAR", "\x00\x43")
+	conn["bleConnection"].write_by_uuid.assert_called_once_with(
+		"CHAR", "\x00\x43", timeout=15)
+
+@mock.patch(STR_TO_HEX, noop1)
+def test_ok_read():
+	conn = get_mocked_connection()
+	conn["char"].is_writable.return_value = True
+	conn["connection"]._open()
+	conn["connection"].read("SERV", "CHAR")
+	conn["bleConnection"].read_by_handle.assert_called_once_with(
+		11, timeout=5)
+
+	conn["bleConnection"].reset_mock()
+	conn["connection"].read("SERV", "CHAR", -42)
+	conn["bleConnection"].read_by_handle.assert_called_once_with(
+		11, timeout=-42)
+
+@mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
+def test_fail_write():
+	conn = get_mocked_connection()
+	conn["char"].is_writable.return_value = True
+	conn["connection"]._open()
+	conn["bleConnection"].write_by_uuid.side_effect = RemoteError(0x0181)
+	with pytest.raises(RemoteError):
+		conn["connection"].write("SERV", "CHAR", 42)
+	assert conn["bleConnection"].write_by_uuid.call_count == 5, "Write operation performs 5 retries by default"
+
+@mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
+def test_fail_read():
+	conn = get_mocked_connection()
+	conn["char"].is_writable.return_value = True
+	conn["connection"]._open()
+	conn["bleConnection"].read_by_handle.side_effect = RemoteError(0x0181)
+	with pytest.raises(RemoteError):
+		conn["connection"].read("SERV", "CHAR")
+	assert conn["bleConnection"].read_by_handle.call_count == 1, "Read operation does not retry"
+
+@mock.patch(STR_TO_HEX, noop1)
+def test_on_notify():
+	callFn = mock.MagicMock()
+	handle = get_mocked_connection()
+	conn = handle["connection"]
+	ble = handle["bleConnection"]
+	ble.get_handles_by_uuid.return_value = (42, )
+
+	conn._open()	
+	cb = conn.onNotify("SERV", "CHAR", callFn)
+	
+	ble.characteristic_subscription.assert_called_once()
+	ble.assign_attrclient_value_callback.assert_called_once()
+	(_bleH, _cbHandle) = ble.assign_attrclient_value_callback.call_args[0]
+	
+	_cbHandle("BLE DATA PASSED")
+
+	callFn.assert_called_once_with("BLE DATA PASSED")
+
+@mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
+def test_notify_error():
+	callFn = mock.MagicMock()
+	handle = get_mocked_connection()
+	conn = handle["connection"]
+	ble = handle["bleConnection"]
+
+	conn._open()
+
+	ble.get_handles_by_uuid.return_value = (42, )
+	ble.characteristic_subscription.side_effect = RemoteError(0x0181)
+
+	with pytest.raises(RemoteError):
+		conn.onNotify("SERV", "CHAR", callFn)
+
+	assert ble.characteristic_subscription.call_count == 5
