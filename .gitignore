@@ -2,6 +2,7 @@
 *.py[cod]
 *$py.class
 *.cache
+*.sublime-workspace
 
 # Installer logs
 pip-log.txt
