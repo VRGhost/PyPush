@@ -1,5 +1,7 @@
 # Open Source Push Server
 
+[![Build Status](https://travis-ci.org/VRGhost/PyPush.svg?branch=master)](https://travis-ci.org/VRGhost/PyPush)
+
 A 3rd-party implementation of Microbot Push service.
 
 This project is planned to contain three separate elements:
