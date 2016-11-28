@@ -187,6 +187,12 @@ def test_on_notify():
 
 	callFn.assert_called_once_with("BLE DATA PASSED")
 
+	callFn.reset_mock()
+	cb.cancel()
+
+	_cbHandle("TEST 2")
+	assert callFn.call_count == 0, "Subscription was cancelled."
+
 @mock.patch(STR_TO_HEX, noop1)
 @mock.patch("time.sleep", noop1)
 def test_notify_error():
