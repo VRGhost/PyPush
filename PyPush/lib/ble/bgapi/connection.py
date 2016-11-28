@@ -228,7 +228,8 @@ class BgConnection(iApi.iConnection):
 			conn.read_by_group_type(GATTService.PRIMARY_SERVICE_UUID, timeout=10)
 			#conn.read_by_group_type(GATTService.SECONDARY_SERVICE_UUID)
 			
-			oldChars = frozenset(el.handle for el in conn.get_characteristics())
+			assert not conn.get_characteristics()
+			oldChars = frozenset([])
 
 			for service in conn.get_services():
 				conn.find_information(service)
@@ -250,7 +251,7 @@ class BgConnection(iApi.iConnection):
 				newChars = frozenset(el.handle for el in allChars)
 				self._serviceToCharacteristics[service.uuid] = tuple(
 					BgCharacteristic(ch.uuid, ch, bOrder.nStrToHHex(ch.uuid))
-					for ch in allChars if ch.handle in newChars
+					for ch in allChars if ch.handle in (newChars - oldChars)
 				)
 				oldChars = newChars
 
