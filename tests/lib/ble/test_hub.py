@@ -2,6 +2,7 @@ import datetime
 import mock
 
 import PyPush.lib.hub as Mod
+import PyPush.lib.iLib as Interfaces
 
 def _retBleMb(bleLib, bleMb, keyDb):
 	return bleMb
@@ -11,14 +12,14 @@ def _retBleMb(bleLib, bleMb, keyDb):
 @mock.patch("PyPush.lib.microbot.MicrobotPush", _retBleMb)
 def test_microbot_gc(timerMock, bleGetLib):
 	config = {}
-	db = mock.Mock()
+	db = mock.create_autospec(Interfaces.iPairingKeyStorage)
 
 	HUB = Mod.PushHub(config, db)
 
 	assert timerMock.call_count == 1
 	now = datetime.datetime.now()
 	def _getMb(lastSeenTime):
-		mb = mock.Mock()
+		mb = mock.create_autospec(Interfaces.iMicrobot)
 		lastSeen = now - datetime.timedelta(seconds=lastSeenTime)
 		mb.getLastSeen.return_value = lastSeen
 		mb.getUID.return_value = lastSeen.isoformat() 
