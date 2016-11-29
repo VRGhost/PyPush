@@ -91,7 +91,7 @@ class PushHub(iLib.iHub):
 		
 		with self._mutex:
 			for (key, mb) in self._microbots.iteritems():
-				if mb.lastSeen() < cutoff:
+				if mb.getLastSeen() < cutoff:
 					toDelete.append(key)
 			for key in toDelete:
 				self._microbots.pop(key)
