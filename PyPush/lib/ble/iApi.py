@@ -61,6 +61,8 @@ class iConnection(object):
 		"""Bind `callback` to execute on each notify event of the characteristic::service.
 
 		Returns <iNotifyHandle>.
+
+		Raises exceptions.NotSupported if notify capability is not supported.
 		"""
 
 	@abstractmethod
@@ -82,6 +84,10 @@ class iConnection(object):
 	@abstractmethod
 	def transaction(self):
 		"""This context locks the connection for the duration of the context."""
+
+	@abstractmethod
+	def getLastActiveTime(self):
+		"""Returns datetime.datetime of when the last activity on the connection had been detected."""
 
 class iNotifyHandle(object):
 	__metaclass__ = ABCMeta

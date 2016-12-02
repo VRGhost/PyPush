@@ -3,7 +3,9 @@ import collections
 import mock
 import pytest
 
-from bgapi.module import RemoteError
+from bgapi.module import RemoteError as bgRemoteError
+
+from PyPush.lib.ble.exceptions import RemoteException
 
 import PyPush.lib.ble.bgapi.connection as ConMod
 
@@ -152,8 +154,8 @@ def test_fail_write():
 	conn = get_mocked_connection()
 	conn["char"].is_writable.return_value = True
 	conn["connection"]._open()
-	conn["bleConnection"].write_by_uuid.side_effect = RemoteError(0x0181)
-	with pytest.raises(RemoteError):
+	conn["bleConnection"].write_by_uuid.side_effect = bgRemoteError(0x0181)
+	with pytest.raises(RemoteException):
 		conn["connection"].write("SERV", "CHAR", 42)
 	assert conn["bleConnection"].write_by_uuid.call_count == 5, "Write operation performs 5 retries by default"
 
@@ -163,8 +165,8 @@ def test_fail_read():
 	conn = get_mocked_connection()
 	conn["char"].is_writable.return_value = True
 	conn["connection"]._open()
-	conn["bleConnection"].read_by_handle.side_effect = RemoteError(0x0181)
-	with pytest.raises(RemoteError):
+	conn["bleConnection"].read_by_handle.side_effect = bgRemoteError(0x0181)
+	with pytest.raises(RemoteException):
 		conn["connection"].read("SERV", "CHAR")
 	assert conn["bleConnection"].read_by_handle.call_count == 1, "Read operation does not retry"
 
@@ -204,9 +206,9 @@ def test_notify_error():
 	conn._open()
 
 	ble.get_handles_by_uuid.return_value = (42, )
-	ble.characteristic_subscription.side_effect = RemoteError(0x0181)
+	ble.characteristic_subscription.side_effect = bgRemoteError(0x0181)
 
-	with pytest.raises(RemoteError):
+	with pytest.raises(RemoteException):
 		conn.onNotify("SERV", "CHAR", callFn)
 
 	assert ble.characteristic_subscription.call_count == 5

@@ -5,7 +5,10 @@ The API object returned is expected to conform to the PyPush.iApi interface.
 
 from .. import const
 
-from . import iApi
+from . import (
+	iApi,
+	exceptions,
+)
 
 def getBgApi(config):
 	from . import bgapi

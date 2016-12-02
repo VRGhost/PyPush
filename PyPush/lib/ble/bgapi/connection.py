@@ -5,10 +5,15 @@ import time
 import collections
 import threading
 import contextlib
+import functools
+import datetime
 
 from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException, RemoteError, Timeout
 
-from .. import iApi
+from .. import (
+	iApi,
+	exceptions,
+)
 
 from . import bOrder
 
@@ -112,12 +117,35 @@ class _ConnNotifyHub(object):
 
 	def _onCharValue(self, char, value):
 		"""Callback fired on every characteristic change."""
+		self._bgConn._updateLastCallTime()
 		for listener in tuple(self._handles[char.uuid][2]):
 			listener._onValue(value)
 
 	def _unsubscribe(self, char, handle):
 		"""Unsubscribe `handle` from updates on characteristic."""
 		self._handles[char.uuid][2].remove(handle)
+
+def ActiveApi(func):
+	"""Decorator that ensures that the connection is active before the payload function is executed.
+
+	Also performs translation of bgapi exceptions to PyPush.lib.ble.exceptions.
+	"""
+	@functools.wraps(func)
+	def _wrapper_(self, *args, **kwargs):
+		if not self.isActive():
+			raise exceptions.NotConnected("The connection is no longer active")
+
+		self._updateLastCallTime()
+		try:
+			return func(self, *args, **kwargs)
+		except RemoteError as err:
+			raise exceptions.RemoteException(err.code, err.message)
+		except Timeout as err:
+			raise exceptions.Timeout(str(err))
+		else:
+			self._updateLastCallTime()
+
+	return _wrapper_
 
 class BgConnection(iApi.iConnection):
 
@@ -130,6 +158,7 @@ class BgConnection(iApi.iConnection):
 		self._bleConn = None
 		self._serviceToCharacteristics = {} # service UUID -> [characteristic UUID]
 		self._notifyHub = _ConnNotifyHub(self)
+		self._lastCallTime = 0
 
 	def getMicrobot(self):
 		return self._mb
@@ -148,11 +177,9 @@ class BgConnection(iApi.iConnection):
 		assert self.isActive()
 		return [self._humanServiceName(el) for el in self._bleConn.get_services()]			
 
+	@ActiveApi
 	def readAllCharacteristics(self):
-		assert self.isActive()
-		
 		rv = {}
-
 		for srv in self._bleConn.get_services():
 			rv[self._humanServiceName(srv)] = srvData = {}
 			for char in self._serviceToCharacteristics[srv.uuid]:
@@ -165,19 +192,26 @@ class BgConnection(iApi.iConnection):
 
 		return rv
 
+	@ActiveApi
 	def onNotify(self, serviceId, characteristicId, callback):
-		assert self.isActive()
 		service = self._findService(serviceId)
 		char = self._findCharacteristic(serviceId, characteristicId)
+		if not char.gatt.has_notify():
+			raise exceptions.NotSupported("Notify is not supported.")
+
 		rv = self._notifyHub.getNewHandle(char)
 		if callable(callback):
 			rv.addCallback(callback)
 		return rv
 
+	@ActiveApi
 	def write(self, serviceId, characteristicId, data):
 		assert self.isActive()
 		char = self._findCharacteristic(serviceId, characteristicId)
-		assert char.gatt.is_writable(), char
+
+		if not char.gatt.is_writable():
+			raise exceptions.NotSupported("Write is not supported.")
+
 		return retry_call_if_fails(
 			self._bleConn, 
 			lambda: self._bleConn.write_by_uuid(char.uuid, data, timeout=15),
@@ -185,9 +219,12 @@ class BgConnection(iApi.iConnection):
 			retry_on_timeout=True
 		)
 
+	@ActiveApi
 	def read(self, serviceId, characteristicId, timeout=5):
 		char = self._findCharacteristic(serviceId, characteristicId)
-		assert char.gatt.is_readable(), char
+		if not char.gatt.is_readable():
+			raise exceptions.NotSupported("Read is not supported.")
+
 		self._bleConn.read_by_handle(char.gatt.handle+1, timeout=timeout)
 		return char.gatt.value
 
@@ -195,6 +232,10 @@ class BgConnection(iApi.iConnection):
 	def transaction(self):
 		with self._ble.transaction():
 			yield
+
+
+	def getLastActiveTime(self):
+		return datetime.datetime.fromtimestamp(self._lastCallTime)
 
 	def _open(self):
 		"""Initiate the connection."""
@@ -254,6 +295,10 @@ class BgConnection(iApi.iConnection):
 					for ch in allChars if ch.handle in (newChars - oldChars)
 				)
 				oldChars = newChars
+
+	def _updateLastCallTime(self):
+		"""Updates last call time to current time."""
+		self._lastCallTime = time.time()
 
 	def __repr__(self):
 		return "<{} {} ({})>".format(self.__class__.__name__, self._mb, "active" if self.isActive() else "inactive")

@@ -15,7 +15,57 @@ from . import (
 	const,
 )
 
+from .ble import exceptions as bleExceptions
+
 LedStatus = collections.namedtuple("LedStatus", ["r", "g", "b"])
+
+class _SubscribedReader(object):
+	"""A handler object that auto-subscribes to notifications on the characteristics being read.
+
+	This allows for all successive reads to the microbot to be much faster as no read command is
+	actually issued.
+	"""
+
+	def __init__(self, mb):
+		self.mb = mb
+		self._handles = {} # List of all notify handles
+		self._values = {} # Cache of all values
+		self._unsupported = set() # List of all read() addresses that do not support notify.
+
+	def clear(self):
+		"""Forgets all notify subscriptions.
+
+		Does not forget list of endpoints not supporting notify as this won't change on the connection
+		restore.
+		"""
+		self._handles.clear()
+		self._values.clear()
+
+	def read(self, service, char):
+		"""Performs BLE read if not subscribed to the notification.
+
+		Returns cached value if subscribed to the notification.
+		"""
+		key = (service, char)
+		conn = self.mb._conn()
+		if key in self._unsupported:
+			rv = conn.read(service, char)
+		elif key in self._handles:
+			rv = self._values[key]
+		else:
+			# Not cached yet
+			rv = conn.read(service, char)
+			try:
+				handle = conn.onNotify(service, char, lambda data: self._onNotify(key, data))
+			except bleExceptions.NotSupported:
+				self._unsupported.add(key)
+			else:
+				self._values[key] = rv
+				self._handles[key] = handle
+		return rv
+
+	def _onNotify(self, key, data):
+		self._values[key] = data
 
 class MicrobotPush(iLib.iMicrobot):
 
@@ -29,8 +79,9 @@ class MicrobotPush(iLib.iMicrobot):
 		self._bleMb = bleMicrobot
 		self._keyDb = keyDb
 		self._mutex = threading.RLock()
-		self._notifyData = {} # uid -> value
-		self._notifyDaemons = []
+		self._reader = _SubscribedReader(self)
+		# self._notifyData = {} # uid -> value
+		# self._notifyDaemons = []
 
 	def connect(self):
 		self.log.info("Connecting.")
@@ -58,27 +109,10 @@ class MicrobotPush(iLib.iMicrobot):
 				self.disconnect()
 				raise exceptions.NotPaired(status, msg)
 
-			# set up notification daemons
-			conn = self._conn()
-			for (serviceID, charId) in [
-				(const.PushServiceId, const.DeviceStatus),
-			]:
-				self._notifyDaemons.append(
-					conn.onNotify(
-						serviceID, charId,
-						lambda data: self._notifyData.__setitem__(charId, data)
-					)
-				)
-				# Perform the first read to populate field with its current value
-				self._notifyData[charId] = conn.read(serviceID, charId)
-
 	def disconnect(self):
 		with self._mutex:
 			if self.isConnected():
-				while self._notifyDaemons:
-					handle = self._notifyDaemons.pop()
-					handle.cancel()
-
+				self._reader.clear()
 				self._bleConn.close()
 				self._bleConn = None
 
@@ -138,9 +172,6 @@ class MicrobotPush(iLib.iMicrobot):
 		else:
 			raise exceptions.NotPaired(status, "Unexpected status 0x{:02X}".format(status))
 
-
-		time.sleep(20)
-
 	def led(self, r, g, b, duration):
 		self.log.info("Setting LED colour.")
 		duration = int(duration)
@@ -172,7 +203,7 @@ class MicrobotPush(iLib.iMicrobot):
 		)
 
 	def isRetracted(self):
-		status = self._notifyData.get(const.DeviceStatus)
+		status = self._reader.read(const.PushServiceId, const.DeviceStatus)
 		if status:
 			rv = (status[1] == "\x00")
 		else:
@@ -189,13 +220,13 @@ class MicrobotPush(iLib.iMicrobot):
 
 	def getCalibration(self):
 		self.log.info("Getting calibration.")
-		rv = self._conn().read(const.PushServiceId, const.DeviceCalibration)
+		rv = self._reader.read(const.PushServiceId, const.DeviceCalibration)
 		(rv, ) = struct.unpack('B', rv)
 		return rv / 100.0
 
 	def getBatteryLevel(self):
 		self.log.info("Getting battery level.")
-		rv = self._conn().read(const.MicrobotServiceId, "2A19")
+		rv = self._reader.read(const.MicrobotServiceId, "2A19")
 		(rv, ) = struct.unpack('B', rv)
 		return rv / 100.0
 
@@ -215,7 +246,10 @@ class MicrobotPush(iLib.iMicrobot):
 		return self._bleMb.getName()
 
 	def getLastSeen(self):
-		return self._bleMb.getLastSeen()
+		rv = self._bleMb.getLastSeen()
+		if self._bleConn:
+			rv = max(rv, self._bleConn.getLastActiveTime())
+		return rv
 
 	def isConnected(self):
 		return self._bleConn and self._bleConn.isActive()
