@@ -7,4 +7,5 @@ TEST_DIR="${PROJECT_ROOT}/tests"
 cd "${PROJECT_ROOT}"
 export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
 
+source "${PROJECT_ROOT}/.env/bin/activate"
 exec python -m pytest ${TEST_DIR} $*
