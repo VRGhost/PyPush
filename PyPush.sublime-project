@@ -12,13 +12,13 @@
 		{
 			"name": "Test all",
 			"working_dir": "${project_path:${folder}}",
-			"cmd": "./bin/test.sh"
+			"cmd": ["./bin/sublime_bin_cmd.sh", "./bin/test.sh"]
 		},
 		{
 			"name": "This test",
 			"working_dir": "${project_path:${folder}}",
 			"file_regex": "test_\\w.py",
-			"cmd": ["./bin/test.sh", "-x", "-k", "${file}"]
+			"cmd": ["./bin/sublime_bin_cmd.sh", "./bin/test.sh", "-x", "-k", "${file}"]
 		},
 	]
 }
