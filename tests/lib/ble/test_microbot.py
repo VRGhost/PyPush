@@ -1,9 +1,12 @@
 import mock
 import re
+import pytest
+import itertools
 
 import PyPush.lib.microbot as Mod
 import PyPush.lib.iLib as iLib
 import PyPush.lib.ble.iApi as iBle
+import PyPush.lib.exceptions as excpt
 
 MB_UID = "HELLO_WORLD_MOCK_MICROBOT_UID"
 PAIR_KEY = "1234567890123456"
@@ -60,10 +63,57 @@ def test_nopair_connect():
 
 	db.hasKey.return_value = True
 	db.get.return_value = PAIR_KEY
-	# db["ble"]["conn"].onNotify.return_value = 
 
 	assert not mb.isConnected()
 
 	mb.connect()
 
 	assert mb.isConnected()
+
+def test_conn_refused():
+	data = setup()
+	mb = data["mb"]
+	db = data["db"]
+
+	db.hasKey.return_value = True
+	db.get.return_value = PAIR_KEY
+	data["ble"]["conn_status"] = "\x03" * 16
+
+	assert not mb.isConnected()
+
+	with pytest.raises(excpt.NotPaired):
+		mb.connect()
+
+	assert not mb.isConnected()
+
+def test_no_my_key():
+	data = setup()
+	mb = data["mb"]
+	db = data["db"]
+
+	db.hasKey.return_value = False
+
+	assert not mb.isConnected()
+
+	with pytest.raises(excpt.NotPaired):
+		mb.connect()
+
+	assert not mb.isConnected()
+
+def test_led():
+	data = setup()
+	mb = data["mb"]
+	db = data["db"]
+	conn = data["ble"]["conn"]
+
+	conn.write.side_effect = None
+	for (r, g, b) in itertools.product([0, 1], [0, 1], [0, 1]):
+		for dur in xrange(1, 255):
+			mb.led(r, g, b, dur)
+			((srv, ch, data), kw) = conn.write.call_args
+			assert not kw
+			assert (srv, ch) == ("1831", "2A14")
+			bitTag = b << 2 | g << 1 | r
+			expData = "\x01{}\x00\x00\x00{}".format(chr(bitTag), chr(dur))
+			assert data == expData, (data, expData)
+	

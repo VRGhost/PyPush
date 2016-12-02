@@ -39,7 +39,8 @@ class MicrobotPush(iLib.iMicrobot):
 
 		with self._mutex:
 			if not self._keyDb.hasKey(uid):
-				raise exceptions.NotPaired(None, "Pairing DB has no key for this device.")
+				raise exceptions.NotPaired(None, "Pairing DB has no key for this device (uid {!r}).".format(
+					uid))
 			key = self._keyDb.get(uid)
 			status = self._checkStatus(key)
 
@@ -54,6 +55,7 @@ class MicrobotPush(iLib.iMicrobot):
 				msg = "Unexpected status 0x{:02X}".format(status)
 
 			if msg is not None:
+				self.disconnect()
 				raise exceptions.NotPaired(status, msg)
 
 			# set up notification daemons
