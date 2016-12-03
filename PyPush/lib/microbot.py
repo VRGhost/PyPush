@@ -8,6 +8,7 @@ import logging
 import itertools
 import struct
 import Queue
+import functools
 
 from . import (
 	iLib,
@@ -64,15 +65,98 @@ class _SubscribedReader(object):
 				self._handles[key] = handle
 		return rv
 
+	def reSubscribe(self):
+		"""Resubscribe for to all notifications this object had been subscribed for.
+
+		Normally executed on the reconnect.
+		"""
+		_oldSubscriptions = self._handles.keys()
+		self.clear()
+		for (service, char) in _oldSubscriptions:
+			self.read(service, char)
+
 	def _onNotify(self, key, data):
 		self._values[key] = data
+
+class _StableAuthorisedConnection(object):
+	"""This is a wrapper for the BLE connection that auto-reconnects to the device & re-authorises connection with the microbot.
+
+	This wrapper performs `retries` connection-reattempts at most.
+	"""
+
+	_active = True
+
+	def __init__(self, microbot, bleConnection, retries=5):
+		self._mb = microbot
+		self._conn = bleConnection
+		self._maxRetries = retries
+		self._mutex = threading.RLock()
+
+	def get(self):
+		"""Returns an established BLE connection."""
+		retry = 0
+		if not self._active:
+			raise exceptions.ConnectionError("Connection closed.")
+
+		with self._mutex:
+			while not self._conn.isActive() and retry < self._maxRetries:
+				self._restoreConnection()
+				time.sleep(retry) # Sleep for a bit to give the device time to recover
+				retry += 1
+
+			if not self._conn.isActive():
+				# Exceeded retry count
+				self._active = False
+				raise exceptions.ConnectionError("Connection failed")
+		return self._conn
+
+	def isActive(self):
+		return self._active
+
+	def close(self):
+		"""Close the connection."""
+		with self._mutex:
+			if self._conn.isActive():
+				self._conn.close()
+			self._active = False
+
+	def _restoreConnection(self):
+		with self._mutex:
+			assert self._active
+			assert not self._conn.isActive(), self._conn
+
+			self._conn = self._mb._sneakyConnect()
+			self._mb._onReconnect()
+
+def ConnectedApi(fn):
+	"""A function that is callable only when the `MicrobotPush` object is CONNECTED to someting."""
+	
+	@functools.wraps(fn)
+	def _wrapper_(self, *args, **kwargs):
+		if not self.isConnected():
+			raise exceptions.PyPushException("This API endpoint is callable only when connected.")
+		return fn(self, *args, **kwargs)
+
+	return _wrapper_
+
+def NotConnectedApi(fn):
+	"""A function callable when the microbot is NOT connected to something."""
+	
+	@functools.wraps(fn)
+	def _wrapper_(self, *args, **kwargs):
+		if self.isConnected():
+			raise exceptions.PyPushException("This API endpoint is callable only when disconnected.")
+		return fn(self, *args, **kwargs)
+
+	return _wrapper_
 
 class MicrobotPush(iLib.iMicrobot):
 
 	log = logging.getLogger(__name__)
 
-	_bleApi = _bleMb = _bleConn = None
+	_bleApi = _bleMb = None
 	_keyDb = None
+	_stableConn = None
 
 	def __init__(self, ble, bleMicrobot, keyDb):
 		self._bleApi = ble
@@ -80,20 +164,31 @@ class MicrobotPush(iLib.iMicrobot):
 		self._keyDb = keyDb
 		self._mutex = threading.RLock()
 		self._reader = _SubscribedReader(self)
-		# self._notifyData = {} # uid -> value
-		# self._notifyDaemons = []
 
+	@NotConnectedApi
 	def connect(self):
-		self.log.info("Connecting.")
 		assert not self.isConnected()
+		self._stableConn = _StableAuthorisedConnection(self, self._sneakyConnect())
+
+	def _sneakyConnect(self):
+		"""Private connect procedure that does not validate preexisting connection state.
+		
+		Used in the `connect()` API endpoint and in the implementation of stable connection object.
+
+		Returns naked BLE connection.
+		"""
+		self.log.info("Connecting.")
 		uid = self.getUID()
 
 		with self._mutex:
 			if not self._keyDb.hasKey(uid):
 				raise exceptions.NotPaired(None, "Pairing DB has no key for this device (uid {!r}).".format(
 					uid))
+
 			key = self._keyDb.get(uid)
-			status = self._checkStatus(key)
+			conn = self._bleApi.connect(self._bleMb)
+
+			status = self._checkStatus(conn, key)
 
 			if status == 0x01:
 				# Connection sucessful
@@ -106,21 +201,25 @@ class MicrobotPush(iLib.iMicrobot):
 				msg = "Unexpected status 0x{:02X}".format(status)
 
 			if msg is not None:
-				self.disconnect()
+				# Connection not sucessful
+				conn.close()
 				raise exceptions.NotPaired(status, msg)
+
+			return conn
 
 	def disconnect(self):
 		with self._mutex:
 			if self.isConnected():
 				self._reader.clear()
-				self._bleConn.close()
-				self._bleConn = None
+				self._stableConn.close()
+				self._stableConn = None
 
+	@NotConnectedApi
 	def pair(self):
 		self.log.info("Pairing with {!r}".format(self._bleMb))
 
-		time.sleep(5)
-		status = self._checkStatus(None)
+		conn = self._bleApi.connect(self._bleMb)
+		status = self._checkStatus(conn, None)
 		if status == 0x02:
 			# Uninitialised microbot
 			pass
@@ -130,15 +229,10 @@ class MicrobotPush(iLib.iMicrobot):
 		SERVICE_ID = const.MicrobotServiceId
 		PAIR_CH = "2A90"
 		HOST_UID = self._getHostUUID()
-
-		conn = self._conn()
-
 		_DATA_QUEUE_ = Queue.Queue()
 
 		with conn.transaction():
-
 			handle = conn.onNotify(SERVICE_ID, PAIR_CH, _DATA_QUEUE_.put)
-
 			# send host's handshake
 			send_data = chr(len(HOST_UID)) + HOST_UID
 			data_part1 = send_data[:20]
@@ -149,7 +243,7 @@ class MicrobotPush(iLib.iMicrobot):
 			ITER_PERIOD = 5
 			for colour in itertools.cycle(self._getPairColourSequence()):
 				iterStart = time.time()
-				self.led(colour.r, colour.g, colour.b, ITER_PERIOD)
+				self._sneakyLed(colour.r, colour.g, colour.b, ITER_PERIOD, conn)
 				yield colour
 				timeRemains = max(ITER_PERIOD - (time.time() - iterStart), 0.1)
 				try:
@@ -167,12 +261,26 @@ class MicrobotPush(iLib.iMicrobot):
 		if status == 0x01:
 			# Pairing sucessfull.
 			self._keyDb.set(self.getUID(), key[:16])
-		elif status == 0x04:
-			raise exceptions.NotPaired(status, "User did not touch the microbot")
+			self._stableConn = _StableAuthorisedConnection(
+				self._bleApi, self._bleMb, self._keyDb,
+				conn,
+			)
 		else:
-			raise exceptions.NotPaired(status, "Unexpected status 0x{:02X}".format(status))
+			conn.close()
+			if status == 0x04:
+				raise exceptions.NotPaired(status, "User did not touch the microbot")
+			else:
+				raise exceptions.NotPaired(status, "Unexpected status 0x{:02X}".format(status))
 
+	@ConnectedApi
 	def led(self, r, g, b, duration):
+		return self._sneakyLed(r, g, b, duration, self._conn())
+
+	def _sneakyLed(self, r, g, b, duration, conn):
+		"""Workaround function to allow blinker colour changes during pairing.
+		
+		This method uses a connection object explicitly passed to it.
+		"""
 		self.log.info("Setting LED colour.")
 		duration = int(duration)
 		assert duration > 0 and duration < 0xFF, duration
@@ -184,10 +292,10 @@ class MicrobotPush(iLib.iMicrobot):
 		if b:
 			colourInt |= 4
 
-		conn = self._conn()
 		data = struct.pack("BBxxxB", 1, colourInt, duration)
 		conn.write(const.MicrobotServiceId, "2A14", data)
 
+	@ConnectedApi
 	def extend(self):
 		self.log.info("Extending the pusher.")
 		self._conn().write(
@@ -195,6 +303,7 @@ class MicrobotPush(iLib.iMicrobot):
 			'\x01'
 		)
 
+	@ConnectedApi
 	def retract(self):
 		self.log.info("Retracting the pusher.")
 		self._conn().write(
@@ -202,6 +311,7 @@ class MicrobotPush(iLib.iMicrobot):
 			'\x01'
 		)
 
+	@ConnectedApi
 	def isRetracted(self):
 		status = self._reader.read(const.PushServiceId, const.DeviceStatus)
 		if status:
@@ -210,6 +320,7 @@ class MicrobotPush(iLib.iMicrobot):
 			rv = None
 		return rv
 
+	@ConnectedApi
 	def setCalibration(self, percentage):
 		self.log.info("Setting calibration.")
 		data = min(max(int(percentage * 100), 0x10), 100)
@@ -218,23 +329,27 @@ class MicrobotPush(iLib.iMicrobot):
 			struct.pack("B", data)
 		)
 
+	@ConnectedApi
 	def getCalibration(self):
 		self.log.info("Getting calibration.")
 		rv = self._reader.read(const.PushServiceId, const.DeviceCalibration)
 		(rv, ) = struct.unpack('B', rv)
 		return rv / 100.0
 
+	@ConnectedApi
 	def getBatteryLevel(self):
 		self.log.info("Getting battery level.")
 		rv = self._reader.read(const.MicrobotServiceId, "2A19")
 		(rv, ) = struct.unpack('B', rv)
 		return rv / 100.0
 
+	@ConnectedApi
 	def deviceBlink(self, seconds):
 		self.log.info("Blinking device.")
 		seconds = min(0xFF, max(0, int(seconds)))
 		self._conn().write(const.MicrobotServiceId, "2A13", struct.pack("B", seconds))
 
+	@ConnectedApi
 	def DEBUG_getFullState(self):
 		"""THIS IS DEBUG METHOD FOR ACQUIRING COMPLETE STATE OF ALL READABLE CHARACTERISTICS OF THE MICROBOT."""
 		return self._conn().readAllCharacteristics()
@@ -247,21 +362,25 @@ class MicrobotPush(iLib.iMicrobot):
 
 	def getLastSeen(self):
 		rv = self._bleMb.getLastSeen()
-		if self._bleConn:
-			rv = max(rv, self._bleConn.getLastActiveTime())
+		if self.isConnected():
+			rv = max(rv, self._conn().getLastActiveTime())
 		return rv
 
 	def isConnected(self):
-		return self._bleConn and self._bleConn.isActive()
+		return self._stableConn and self._stableConn.isActive()
 
 	def isPaired(self):
 		return self._keyDb.hasKey(self.getUID())
 
-	def _checkStatus(self, pairKey):
+	def _onReconnect(self):
+		"""Callback executed on reconnection to the microbot."""
+		self._reader.reSubscribe()
+
+	def _checkStatus(self, bleConnection, pairKey):
 		if not pairKey:
 			pairKey = "\x00" * 16
 
-		assert len(pairKey) == 16
+		assert len(pairKey) == 16, repr(pairKey)
 		ts = time.mktime(datetime.datetime.utcnow().timetuple())
 		data = struct.pack('=I', int(ts)) + pairKey
 		assert len(data) == 20, repr(data)
@@ -269,15 +388,14 @@ class MicrobotPush(iLib.iMicrobot):
 		SERVICE_ID = const.MicrobotServiceId
 		STATUS_CHAR = "2A98"
 		_NOTIFY_Q_ = Queue.Queue()
-		conn = self._conn()
-		with conn.transaction():
-			handle = conn.onNotify(SERVICE_ID, STATUS_CHAR, _NOTIFY_Q_.put)
-			conn.write(SERVICE_ID, STATUS_CHAR, data)
+		with bleConnection.transaction():
+			handle = bleConnection.onNotify(SERVICE_ID, STATUS_CHAR, _NOTIFY_Q_.put)
+			bleConnection.write(SERVICE_ID, STATUS_CHAR, data)
 			try:
 				reply = _NOTIFY_Q_.get(timeout=20)
 			except Queue.Empty:
 				self.log.info("Failed to check status of {!r}".format(self._bleMb))
-				conn.close()
+				return "\xff" * 17
 			finally:
 				handle.cancel()
 
@@ -292,16 +410,7 @@ class MicrobotPush(iLib.iMicrobot):
 
 	def _conn(self):
 		"""Returns BLE connection to this microbot. Opens it if it needed."""
-		with self._mutex:
-			if self._bleConn and self._bleConn.isActive():
-				rv = self._bleConn
-			else:
-				if self._bleConn:
-					self._bleConn.close()
-				self.log.info("Opening new BLE connection to {}".format(self._bleMb))
-				rv = self._bleApi.connect(self._bleMb)
-				self._bleConn = rv
-		return rv
+		return self._stableConn.get()
 
 	def _getPairColourSequence(self):
 		"""Return colour sequence the Microbot is cycling trough while waiting for user touch."""

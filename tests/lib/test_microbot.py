@@ -21,6 +21,7 @@ def setup():
 	bleApi.connect.return_value = bleConn
 
 	bleMb.getUID.return_value = MB_UID
+	keyDb.get.return_value = PAIR_KEY
 
 	mb = Mod.MicrobotPush(bleApi, bleMb, keyDb)
 
@@ -63,7 +64,6 @@ def test_nopair_connect():
 	db = data["db"]
 
 	db.hasKey.return_value = True
-	db.get.return_value = PAIR_KEY
 
 	assert not mb.isConnected()
 
@@ -77,7 +77,7 @@ def test_conn_refused():
 	db = data["db"]
 
 	db.hasKey.return_value = True
-	db.get.return_value = PAIR_KEY
+	
 	data["ble"]["conn_status"] = "\x03" * 16
 
 	assert not mb.isConnected()
@@ -106,6 +106,8 @@ def test_led():
 	mb = data["mb"]
 	db = data["db"]
 	conn = data["ble"]["conn"]
+
+	mb.connect()
 
 	conn.write.side_effect = None
 	for (r, g, b) in itertools.product([0, 1], [0, 1], [0, 1]):
