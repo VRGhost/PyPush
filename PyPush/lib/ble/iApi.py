@@ -60,7 +60,7 @@ class iConnection(object):
 	def onNotify(self, serviceId, characteristicId, callback):
 		"""Bind `callback` to execute on each notify event of the characteristic::service.
 
-		Returns <iNotifyHandle>.
+		Returns <PyPush.lib.async.SubscriptionHandle>.
 
 		Raises exceptions.NotSupported if notify capability is not supported.
 		"""
@@ -88,10 +88,3 @@ class iConnection(object):
 	@abstractmethod
 	def getLastActiveTime(self):
 		"""Returns datetime.datetime of when the last activity on the connection had been detected."""
-
-class iNotifyHandle(object):
-	__metaclass__ = ABCMeta
-
-	@abstractmethod
-	def cancel(self):
-		"""Cancel this notify handle."""

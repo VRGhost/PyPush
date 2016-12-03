@@ -36,8 +36,8 @@ class iHub(object):
 	__metaclass__ = ABCMeta
 
 	@abstractmethod
-	def onNewMicrobot(self, callback):
-		"""Sets callback that is executed on discovery of every new microbot."""
+	def onMicrobot(self, onDiscovered, onLost):
+		"""Executes `onDiscovered` callback when a new microbot is discovered, calls `onLost` callback when a microbot is lost."""
 
 	@abstractmethod
 	def getMicrobot(self, nameOrUid, timeout=0):

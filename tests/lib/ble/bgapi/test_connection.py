@@ -18,6 +18,7 @@ CharacteristicMock = collections.namedtuple(
 def noop1(arg):
 	return arg
 
+
 @mock.patch(STR_TO_HEX, noop1) # prevents service UUID translation
 def test_connection_open():
 	mb = mock.MagicMock() # Microbot object

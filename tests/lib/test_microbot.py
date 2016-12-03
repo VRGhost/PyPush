@@ -3,6 +3,7 @@ import re
 import pytest
 import itertools
 
+import PyPush.lib.async.subscribe as Subscribe
 import PyPush.lib.microbot as Mod
 import PyPush.lib.iLib as iLib
 import PyPush.lib.ble.iApi as iBle
@@ -38,7 +39,7 @@ def setup():
 		}
 	}
 
-	notifyH = mock.create_autospec(iBle.iNotifyHandle)
+	notifyH = mock.create_autospec(Subscribe.iHandle)
 	bleConn.onNotify.return_value = notifyH
 
 	def _connWrite(service, char, data):

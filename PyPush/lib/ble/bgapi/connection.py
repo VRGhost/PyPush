@@ -10,6 +10,8 @@ import datetime
 
 from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException, RemoteError, Timeout
 
+import PyPush.lib.async as async
+
 from .. import (
 	iApi,
 	exceptions,
@@ -18,31 +20,6 @@ from .. import (
 from . import bOrder
 
 BgCharacteristic = collections.namedtuple("BgCharacteristic", ["uuid", "gatt", "human_uuid"])
-
-class BgNotifyHandle(iApi.iNotifyHandle):
-
-	_LAST_VALUE_ = None
-
-	def __init__(self, hub, characteristic):
-		self._hub = hub
-		self._char = characteristic
-		self._valueEvt = threading.Event()
-		self._callbacks = []
-		self._opMutex = threading.Lock()
-		self._waiting = 0
-
-	def cancel(self):
-		self._hub._unsubscribe(self._char, self)
-
-
-	def addCallback(self, cb):
-		assert callable(cb), cb
-		self._callbacks.append(cb)
-
-	def _onValue(self, value):
-		"""Method that is called when new value becomes available."""
-		for cb in tuple(self._callbacks):
-			cb(value)
 
 def retry_call_if_fails(connection, func, attempts, fail_delay=3, delayed_unlock=0.5, retry_on_remote_err=(), retry_on_timeout=False):
 	attempts_left = attempts
@@ -69,61 +46,69 @@ def retry_call_if_fails(connection, func, attempts, fail_delay=3, delayed_unlock
 		time.sleep(fail_delay)
 
 
-class _ConnNotifyHub(object):
+class _ConnNotify(async.SubscribeHub):
 
-	def __init__(self, bgConnection):
-		self._bgConn = bgConnection
-		self._handles = collections.defaultdict(lambda: [False, None, []]) # uuid -> (subscription_active, characteristic, [handles])
+	delay = 0.1 # seconds
+	_isActive = False
+	_timer = None
 
-	def getNewHandle(self, bgCharacteristic):
-		"""Returns new Notify handle instance."""
-		assert bgCharacteristic.gatt.has_notify(), bgCharacteristic
+	def __init__(self, bgConnection, characteristic):
+		super(_ConnNotify, self).__init__()
+		self.characteristic = characteristic
+		self._conn = bgConnection
 
-		handle = BgNotifyHandle(self, bgCharacteristic)
-		item = self._handles[bgCharacteristic.uuid]
-		
-		item[1] = bgCharacteristic
-		item[2].append(handle)
-		
-		self._manageSubscriptions()
-		return handle
+	def onSubscribe(self, handle):
+		super(_ConnNotify, self).onSubscribe(handle)
+		self._manage()
 
-	def _manageSubscriptions(self):
-		for (key, [is_active, char, handles]) in self._handles.iteritems():
-			
-			shouldBeActive = len(handles) > 0
+	def onUnsubscribe(self, handle):
+		super(_ConnNotify, self).onUnsubscribe(handle)
+		self._manage()
 
-			def _getCbFn():
-				# This binds 'char' value to the scope
-				return lambda value: self._onCharValue(char, value)
+	def _manage(self):
+		"""Manage 'subscribed' status."""
+		with self._mutex:
+			shouldBeActive = self.getSubscriberCount() > 0
 
-			if shouldBeActive != is_active:
+			if shouldBeActive != self._isActive:
 				conn = self._getBleConn()
-				for handle in conn.get_handles_by_uuid(char.uuid):
-					conn.assign_attrclient_value_callback(handle, _getCbFn())
+				for handle in conn.get_handles_by_uuid(self.characteristic.uuid):
+					conn.assign_attrclient_value_callback(handle, self._onNotify)
 
 				retry_call_if_fails(
 					conn, 
-					lambda: conn.characteristic_subscription(char.gatt, indicate=False, notify=shouldBeActive, timeout=10),
+					lambda: conn.characteristic_subscription(
+						self.characteristic.gatt, indicate=False, notify=shouldBeActive, timeout=10),
 					attempts=5, retry_on_remote_err=(0x0181, ), retry_on_timeout=True
 				)
 
 				# State synced.
-				self._handles[key][0] = shouldBeActive
+				self._isActive = shouldBeActive
 
 	def _getBleConn(self):
-		assert self._bgConn.isActive(), self._bgConn
-		return self._bgConn._bleConn
+		assert self._conn.isActive(), self._bgConn
+		return self._conn._bleConn
 
-	def _onCharValue(self, char, value):
-		"""Callback fired on every characteristic change."""
-		self._bgConn._updateLastCallTime()
-		for listener in tuple(self._handles[char.uuid][2]):
-			listener._onValue(value)
+	def _onNotify(self, data):
+		self._conn._updateLastCallTime()
+		self.fireSubscribers(data)
 
-	def _unsubscribe(self, char, handle):
-		"""Unsubscribe `handle` from updates on characteristic."""
-		self._handles[char.uuid][2].remove(handle)
+class _ConnNotifyHub(object):
+
+	def __init__(self, conn):
+		self.conn = conn
+		self.subscriberHubs = {}
+		self._mutex = threading.Lock()
+
+	def addCallback(self, characteristic, cb):
+		key = characteristic.uuid
+		with self._mutex:
+			try:
+				subs = self.subscriberHubs[key]
+			except KeyError:
+				subs = _ConnNotify(self.conn, characteristic)
+				self.subscriberHubs[key] = subs
+		return subs.subscribe(cb)
 
 def ActiveApi(func):
 	"""Decorator that ensures that the connection is active before the payload function is executed.
@@ -199,10 +184,7 @@ class BgConnection(iApi.iConnection):
 		if not char.gatt.has_notify():
 			raise exceptions.NotSupported("Notify is not supported.")
 
-		rv = self._notifyHub.getNewHandle(char)
-		if callable(callback):
-			rv.addCallback(callback)
-		return rv
+		return self._notifyHub.addCallback(char, callback)
 
 	@ActiveApi
 	def write(self, serviceId, characteristicId, data):

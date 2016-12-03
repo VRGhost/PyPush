@@ -7,6 +7,7 @@ from . import (
 	ble,
 	microbot,
 	exceptions,
+	async,
 )
 
 class PushHub(iLib.iHub):
@@ -16,17 +17,27 @@ class PushHub(iLib.iHub):
 		self._keyDb = keyDb
 		self._mutex = threading.RLock()
 		self._microbots = {} # uid -> microbot object
-		self._newMbCbs = [] # new microbot callbacks
+		
+		self._newMbCbs = async.SubscribeHub()
+		self._lostMbCbs = async.SubscribeHub()
+
 		self._ble = ble.getLib(bleConfig)
 		self._ble.onScan(self._onBleScan)
 		self._gcMicrobots()
 
-	def onNewMicrobot(self, callback):
-		assert callable(callback), callback
+	def onMicrobot(self, onDiscovered, onLost):
+		handles = []
+		if onDiscovered:
+			assert callable(onDiscovered)
+			handles.append(self._newMbCbs.subscribe(onDiscovered))
+		if onLost:
+			assert callable(onLost)
+			handles.append(self._lostMbCbs.subscribe(onLost))
 
-		with self._mutex:
-			self._newMbCbs.append(callback)
-		return lambda: self._unregisterOnScanCb(callback)
+		if not handles:
+			raise Exception("No callbacks provided")
+
+		return async.MultiHandle(handles)
 
 	def getMicrobot(self, nameOrUid, timeout=0):
 		key = nameOrUid.lower()
@@ -45,14 +56,14 @@ class PushHub(iLib.iHub):
 			def _onNewMb(mb):
 				if isMyBot(mb):
 					_q_.put(mb)
-			canceller = self.onNewMicrobot(_onNewMb)
+			handle = self.onMicrobot(_onNewMb, None)
 
 		try:
 			return _q_.get(timeout=timeout)
 		except Queue.Empty:
 			raise exceptions.Timeout("Failed to get microbot in time.")
 		finally:
-			canceller()
+			handle.cancel()
 
 	def getAllMicrobots(self):
 		return self._microbots.values()
@@ -73,12 +84,7 @@ class PushHub(iLib.iHub):
 		if isNew:
 			assert mb
 			# Execute callbacks for the 'new microbot' event
-			for cb in self._newMbCbs:
-				cb(mb)
-
-	def _unregisterOnScanCb(self, cb):
-		with self._mutex:
-			self._newMbCbs.remove(cb)
+			self._newMbCbs.fireSubscribers(mb)
 
 	_gcTimer = None
 	def _gcMicrobots(self):

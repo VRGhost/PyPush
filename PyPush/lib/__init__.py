@@ -4,6 +4,7 @@ from . import (
 	ble,
 	exceptions,
 	iLib,
+	async,
 )
 
 from . import hub as _hubModule
