@@ -261,10 +261,7 @@ class MicrobotPush(iLib.iMicrobot):
 		if status == 0x01:
 			# Pairing sucessfull.
 			self._keyDb.set(self.getUID(), key[:16])
-			self._stableConn = _StableAuthorisedConnection(
-				self._bleApi, self._bleMb, self._keyDb,
-				conn,
-			)
+			self._stableConn = _StableAuthorisedConnection(self, conn)
 		else:
 			conn.close()
 			if status == 0x04:

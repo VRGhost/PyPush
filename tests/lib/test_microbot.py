@@ -10,6 +10,7 @@ import PyPush.lib.ble.iApi as iBle
 import PyPush.lib.exceptions as excpt
 
 MB_UID = "HELLO_WORLD_MOCK_MICROBOT_UID"
+HOST_UID = "MOCKED_HOST_UID"
 PAIR_KEY = "1234567890123456"
 
 def setup():
@@ -22,6 +23,7 @@ def setup():
 
 	bleMb.getUID.return_value = MB_UID
 	keyDb.get.return_value = PAIR_KEY
+	bleApi.getUID.return_value = HOST_UID
 
 	mb = Mod.MicrobotPush(bleApi, bleMb, keyDb)
 
@@ -32,10 +34,12 @@ def setup():
 			"api": bleApi,
 			"mb": bleMb,
 			"conn": bleConn,
-			"conn_status": "\x01" + ("\x00" * 15),
-			"exp_data": [
-				"^.*{}$".format(PAIR_KEY),
-			],
+			"data": {
+				("1831", "2A98"): [
+					{"t": "RECV", "d": "^.*{}$".format(PAIR_KEY)}, # Receive a string
+					{"t": "SEND", "d": "\x01" + ("\x00" * 15)}, # Send a string
+				]
+			},
 			"handle_cb": []
 		}
 	}
@@ -44,15 +48,19 @@ def setup():
 	bleConn.onNotify.return_value = notifyH
 
 	def _connWrite(service, char, data):
-		assert service == "1831", service
-		assert char == "2A98", char
+		key = (service, char)
+		assert key in rv["ble"]["data"], rv["ble"]["data"]
+		script = rv["ble"]["data"][key]
 
-		exp = rv["ble"]["exp_data"].pop(0)
-		assert re.match(exp, data), (exp, data)
-		if not rv["ble"]["exp_data"]:
-			# No more data is expected
-			for ((service, char, cb), kw) in bleConn.onNotify.call_args_list:
-				cb(rv["ble"]["conn_status"])
+		exp = script.pop(0)
+		assert exp["t"] == "RECV", exp # Expecing an 'expect command'
+		assert re.match(exp["d"], data), (key, exp["d"], data)
+		if script and script[0]["t"] == "SEND":
+			# Send command
+			data = script.pop(0)["d"]
+			for ((cbService, cbChar, cb), kw) in bleConn.onNotify.call_args_list:
+				if cbService == service and cbChar == char:
+					cb(data)			
 
 	bleConn.write.side_effect = _connWrite
 
@@ -78,7 +86,7 @@ def test_conn_refused():
 
 	db.hasKey.return_value = True
 	
-	data["ble"]["conn_status"] = "\x03" * 16
+	data["ble"]["data"][("1831", "2A98")][-1]["d"] = "\x03" * 16 # change the return code to the authorisation request
 
 	assert not mb.isConnected()
 
@@ -119,4 +127,67 @@ def test_led():
 			bitTag = b << 2 | g << 1 | r
 			expData = "\x01{}\x00\x00\x00{}".format(chr(bitTag), chr(dur))
 			assert data == expData, (data, expData)
+
+def test_pair_success():
+	data = setup()
+	mb = data["mb"]
+	db = data["db"]
+
+	assert not mb.isConnected()
+
+	data["ble"]["data"].update({
+		("1831", "2A98"):	[
+			# change the return code to the authorisation request
+			{"t": "RECV", "d": ".*\x00{16}"},
+			{"t": "SEND", "d": "\x02" * 16 },
+		],
+		("1831", "2A90"): [
+			# Pair service dialogue
+			{"t": "RECV", "d": chr(len(HOST_UID)) + HOST_UID + ".*"},
+			{"t": "RECV", "d": "\x00"},
+			{"t": "SEND", "d": "\x01" + PAIR_KEY },
+		],
+		("1831", "2A14"): [
+			# LED writes
+			{"t": "RECV", "d": ".*"},
+		],
+	})
 	
+
+	for x in mb.pair():
+		pass
+
+	assert mb.isConnected()
+	db.set.assert_called_with(MB_UID, PAIR_KEY)
+
+
+def test_pair_no_touch():
+	data = setup()
+	mb = data["mb"]
+	db = data["db"]
+
+	assert not mb.isConnected()
+
+	data["ble"]["data"].update({
+		("1831", "2A98"):	[
+			# change the return code to the authorisation request
+			{"t": "RECV", "d": ".*\x00{16}"},
+			{"t": "SEND", "d": "\x02" * 16 },
+		],
+		("1831", "2A90"): [
+			# Pair service dialogue
+			{"t": "RECV", "d": chr(len(HOST_UID)) + HOST_UID + ".*"},
+			{"t": "RECV", "d": "\x00"},
+			{"t": "SEND", "d": "\x04" * 17},
+		],
+		("1831", "2A14"): [
+			# LED writes
+			{"t": "RECV", "d": ".*"},
+		],
+	})
+	
+	with pytest.raises(excpt.NotPaired):
+		for x in mb.pair():
+			pass
+
+	assert not mb.isConnected()
