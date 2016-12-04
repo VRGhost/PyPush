@@ -1,1 +1,4 @@
-from . import lib
+from . import (
+	lib,
+	web,
+)

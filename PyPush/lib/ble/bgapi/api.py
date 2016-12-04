@@ -18,7 +18,7 @@ class API(iApi.iApi):
 		"""Config must be a dict with "port" key (specifying tty of the bluegiga token)"""
 		self._mbDb = mbRegistry.MicrobotRegistry(maxAge=60 * 60)
 		_ble = BlueGigaClient(
-			port=config["port"],
+			port=config["device"],
 			baud=config.get("baud", 115200),
 			timeout=config.get("timeout", 0.1)
 		)

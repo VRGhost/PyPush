@@ -14,6 +14,7 @@ from . import (
 	iLib,
 	exceptions,
 	const,
+	async,
 )
 
 from .ble import exceptions as bleExceptions
@@ -76,7 +77,9 @@ class _SubscribedReader(object):
 			self.read(service, char)
 
 	def _onNotify(self, key, data):
-		self._values[key] = data
+		if data != self._values[key]:
+			self._values[key] = data
+			self.mb._fireChangeState()
 
 class _StableAuthorisedConnection(object):
 	"""This is a wrapper for the BLE connection that auto-reconnects to the device & re-authorises connection with the microbot.
@@ -163,12 +166,14 @@ class MicrobotPush(iLib.iMicrobot):
 		self._bleMb = bleMicrobot
 		self._keyDb = keyDb
 		self._mutex = threading.RLock()
+		self._onChangeCbs = async.SubscribeHub()
 		self._reader = _SubscribedReader(self)
 
 	@NotConnectedApi
 	def connect(self):
 		assert not self.isConnected()
 		self._stableConn = _StableAuthorisedConnection(self, self._sneakyConnect())
+		self._fireChangeState()
 
 	def _sneakyConnect(self):
 		"""Private connect procedure that does not validate preexisting connection state.
@@ -262,6 +267,7 @@ class MicrobotPush(iLib.iMicrobot):
 			# Pairing sucessfull.
 			self._keyDb.set(self.getUID(), key[:16])
 			self._stableConn = _StableAuthorisedConnection(self, conn)
+			self._fireChangeState()
 		else:
 			conn.close()
 			if status == 0x04:
@@ -351,6 +357,9 @@ class MicrobotPush(iLib.iMicrobot):
 		"""THIS IS DEBUG METHOD FOR ACQUIRING COMPLETE STATE OF ALL READABLE CHARACTERISTICS OF THE MICROBOT."""
 		return self._conn().readAllCharacteristics()
 
+	def onStateChange(self, cb):
+		return self._onChangeCbs.subscribe(cb)
+
 	def getUID(self):
 		return self._bleMb.getUID()
 
@@ -364,10 +373,13 @@ class MicrobotPush(iLib.iMicrobot):
 		return rv
 
 	def isConnected(self):
-		return self._stableConn and self._stableConn.isActive()
+		return bool(self._stableConn and self._stableConn.isActive())
 
 	def isPaired(self):
 		return self._keyDb.hasKey(self.getUID())
+
+	def _fireChangeState(self):
+		self._onChangeCbs.fireSubscribers(self)
 
 	def _onReconnect(self):
 		"""Callback executed on reconnection to the microbot."""

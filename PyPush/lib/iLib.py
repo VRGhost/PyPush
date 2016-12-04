@@ -131,3 +131,7 @@ class iMicrobot(object):
 		The iterator yields (r, g, b) tuples (with each element being either `True` or `False`) while the microbot is waiting for the user touch.
 		Colours returned coincide wit the colours microbot's LED is showing at the moment.
 		"""
+
+	@abstractmethod
+	def onStateChange(self, cb):
+		"""Registers a new callback that will be fired whenever this microbot object experiences a change of state."""

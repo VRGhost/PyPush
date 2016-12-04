@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<meta charset="UTF-8"> 
+	<title>PyPush</title>
+
+	<script src="{{ url_for('bower.static', filename='angular/angular.min.js') }}"></script>
+	<script src="{{ url_for('bower.static', filename='angular-resource/angular-resource.min.js') }}"></script>
+
+	<script src="{{ url_for('static', filename='main.js') }}"></script>
+</head>
+<body>
+ 	<h1>Hello World!</h1>
+ 	{% raw %}
+ 	
+ 	<div ng-app="PyPushApp" ng-controller="PushList">
+ 		<table border="1">
+ 			<thead>
+ 				<tr><td>Name</td><td>UUID</td><td>Status</td><td>Actions</td></tr>
+ 			</thead>
+ 			<tbody>
+ 				<tr data-ng-repeat="rec in microbots">
+ 					<td>{{ rec.name }}</td><td>{{ rec.uuid }}</td><td>{{ rec.status }}</td>
+ 					<td>
+ 						<div data-ng-repeat="action in rec.actions">
+ 							<button type="button" ng-click="doAction(rec.uuid, action)">{{ action }}</button>
+ 						</div>
+ 					</td>
+ 				</tr>
+ 			</tbody>
+ 		</table>
+	</div>
+
+	{% endraw %}
+</body>
+</html>

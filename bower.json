@@ -1,0 +1,22 @@
+{
+  "name": "PyPush",
+  "homepage": "https://github.com/VRGhost/PyPush",
+  "authors": [
+    "Ilja Orlovs <ilja@wise.fish>"
+  ],
+  "description": "Microbot Push web UI",
+  "main": "",
+  "license": "MIT",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "angular": "^1.5.9",
+    "angular-resource": "^1.5.9"
+  }
+}
