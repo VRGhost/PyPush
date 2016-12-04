@@ -10,7 +10,7 @@ import enum
 
 from sqlalchemy import exists
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import func
+from sqlalchemy import func, update
 
 import PyPush.lib as Lib
 from PyPush.web import db
@@ -186,6 +186,10 @@ class MicrobotBluetoothService(object):
 			"driver": bleDriver,
 			"device": bleDevice,
 		}
+		with self.sessionCtx() as s:
+			stmt = update(db.Microbot).values(is_connected=False)
+			s.execute(stmt)
+
 		self._hub = Lib.PushHub(config, self._pairDb)
 		self._evtHandle = self._hub.onMicrobot(self._onMbFound, self._onMbLost)
 		self._writer.start()
@@ -256,11 +260,26 @@ class MicrobotBluetoothService(object):
 			rec.calibration = mGet(mb.getCalibration)
 
 			s.commit()
-			
+
 			self._dbIds[mbUid] = rec.id
 
 	def getDbId(self, uid):
-		return self._dbIds[uid]
+		try:
+			rv = self._dbIds[uid]
+		except KeyError:
+			self._reloadDbIds()
+			rv = self._dbIds[uid]
+		return rv
+
+	_nextReloadOn = 0
+	_RELOAD_FREQ = 60 # seconds
+	def _reloadDbIds(self):
+		if time.time() < self._nextReloadOn:
+			return
+		with self.sessionCtx() as s:
+			for (dbId, uuid) in s.query(db.Microbot.id, db.Microbot.uuid).all():
+				self._dbIds[uuid] = dbId
+		self._nextReloadOn = time.time() + self._RELOAD_FREQ
 
 	def getBleMicrobots(self):
 		return tuple(self._microbots.itervalues())
