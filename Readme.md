@@ -16,8 +16,6 @@ Although the library is intended to operate with any BLE hardware or stack, only
 
 [Microbot Push Library Documentation](docs/PyPush_lib.md)
 
-## Microbot Push Daemon
-Not available yet.
-
 ## Web UI
-Not available yet.
+
+![UI Screenshot](./docs/img/web_ui_1.png)

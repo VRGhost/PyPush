@@ -28,11 +28,16 @@ class _SubscribedReader(object):
 	actually issued.
 	"""
 
+	UNSUPPORTED_REFRESH_FREQ = 5 * 60 # seconds
+
 	def __init__(self, mb):
 		self.mb = mb
 		self._handles = {} # List of all notify handles
 		self._values = {} # Cache of all values
-		self._unsupported = set() # List of all read() addresses that do not support notify.
+		self._unsupportedValues = {} # key -> (value, expire_time)
+		self._unsupported = set([
+			(const.PushServiceId, const.DeviceCalibration), # Calibration subscription does not generate events.
+		]) # List of all read() addresses that do not support notify.
 
 	def clear(self):
 		"""Forgets all notify subscriptions.
@@ -51,7 +56,7 @@ class _SubscribedReader(object):
 		key = (service, char)
 		conn = self.mb._conn()
 		if key in self._unsupported:
-			rv = conn.read(service, char)
+			rv = self._readUnsupported(conn, service, char)
 		elif key in self._handles:
 			rv = self._values[key]
 		else:
@@ -65,6 +70,30 @@ class _SubscribedReader(object):
 				self._values[key] = rv
 				self._handles[key] = handle
 		return rv
+
+	def _readUnsupported(self, conn, service, char):
+		key = (service, char)
+		try:
+			(oldVal, expireTime) = self._unsupportedValues[key]
+		except KeyError:
+			oldVal = None
+			expireTime = 0
+
+		now = time.time()
+		if now > expireTime:
+			# Re-read the data
+			rv = conn.read(service, char)
+			self._unsupportedValues[key] = (rv, now + self.UNSUPPORTED_REFRESH_FREQ)
+		else:
+			rv = oldVal
+		return rv
+
+	def _expireCache(self, service, characteristics):
+		key = (service, characteristics)
+		try:
+			self._unsupportedValues.pop(key)
+		except KeyError:
+			pass
 
 	def reSubscribe(self):
 		"""Resubscribe for to all notifications this object had been subscribed for.
@@ -331,6 +360,7 @@ class MicrobotPush(iLib.iMicrobot):
 			const.PushServiceId, const.DeviceCalibration,
 			struct.pack("B", data)
 		)
+		self._reader._expireCache(const.PushServiceId, const.DeviceCalibration)
 
 	@ConnectedApi
 	def getCalibration(self):

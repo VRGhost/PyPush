@@ -4,6 +4,7 @@ import threading
 import datetime
 import traceback
 import logging
+import time
 
 import enum
 
@@ -158,6 +159,9 @@ class ActionWriter(object):
 			mb.extend()
 		elif cmd == MB_ACTIONS.retract.key:
 			mb.retract()
+		elif cmd == MB_ACTIONS.calibrate.key:
+			assert len(args) == 1, (args, kwargs)
+			mb.setCalibration(args[0])
 		else:
 			raise Exception([cmd, args, kwargs])
 
@@ -166,6 +170,8 @@ class ActionWriter(object):
 
 class MicrobotBluetoothService(object):
 	"""Microbot bluetooth service."""
+
+	log = logging.getLogger(__name__)
 
 	def __init__(self, pushApp):
 		self.app = pushApp
@@ -225,12 +231,33 @@ class MicrobotBluetoothService(object):
 			rec.is_paired = mb.isPaired()			
 			rec.last_seen = mb.getLastSeen()
 
-			mGet = lambda fn: fn() if is_conn else None
+			def mGet(fn):
+				"""Retreives value of the function, performs serveral re-attempts on timeout."""
+				attempts_left = 3
+				while True:
+					if not mb.isConnected():
+						return None
+					try:
+						try:
+							return fn()
+						except Lib.exceptions.Timeout:
+							attempts_left -= 1
+							if attempts_left <= 0:
+								# No more attempts left
+								raise
+							time.sleep(3)
+					except:
+						tb = traceback.format_exc()
+						self.log.error(tb)
+						rec.last_error = tb
 
 			rec.retracted = mGet(mb.isRetracted)
 			rec.battery = mGet(mb.getBatteryLevel)
 			rec.calibration = mGet(mb.getCalibration)
-		self._dbIds[mbUid] = rec.id
+
+			s.commit()
+			
+			self._dbIds[mbUid] = rec.id
 
 	def getDbId(self, uid):
 		return self._dbIds[uid]
@@ -247,9 +274,12 @@ class MicrobotBluetoothService(object):
 		with self.app.flask.app_context():
 			session = self.app.db.create_scoped_session({})
 			try:
-				yield session
-			except:
-				session.rollback()
-				raise
-			else:
-				session.commit()
+				try:
+					yield session
+				except:
+					session.rollback()
+					raise
+				else:
+					session.commit()
+			finally:
+				session.close()

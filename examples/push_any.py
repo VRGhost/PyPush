@@ -27,15 +27,11 @@ class MyKeyDb(PyPush.lib.iLib.iPairingKeyStorage):
 		except KeyError:
 			pass
 
-def newMicrobotFound(dev):
-	print "NEW MICROBOT", dev
-
 DB = MyKeyDb()
 service = PyPush.lib.PushHub(
-	{"driver": "bgapi", "port": "/dev/tty.usbmodem1"},
+	{"driver": "bgapi", "device": "/dev/tty.usbmodem1"},
 	DB
 )
-service.onNewMicrobot(newMicrobotFound)
 mb = service.getMicrobot('D6:CF:D7:59:7F:ED')
 
 
@@ -51,9 +47,9 @@ except PyPush.lib.exceptions.NotPaired as err:
 ret = []
 ext = []
 
-while True:
-	print mb.isRetracted()
-	time.sleep(5)
+# while True:
+# 	print mb.isRetracted()
+# 	time.sleep(5)
 
 
 
@@ -62,9 +58,12 @@ while True:
 #print mb.getCalibration()
 #print mb.getBatteryLevel()
 #mb.setCalibration(0.5)
-#mb.extend()
-#time.sleep(4)
-#mb.retract()
+# mb.extend()
+# time.sleep(4)
+# mb.retract()
+while True:
+	print mb.isRetracted()
+	time.sleep(5)
 #mb.led(0, 1, 0, duration=10)
 #mb.disconnect()
 
