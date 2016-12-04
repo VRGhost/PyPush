@@ -87,7 +87,7 @@ class ActionWriter(object):
 				waitTime = 30
 			else:
 				waitTime = (nextActionTime - datetime.datetime.utcnow()).seconds
-				waitTime = max(waitTime, 1)
+				waitTime = min(max(waitTime, 1), 10)
 
 			self._wakeup.wait(waitTime)
 			self._wakeup.clear()
@@ -95,11 +95,21 @@ class ActionWriter(object):
 	def _step(self, session, microbots):
 		completedActions = []
 		chainsToRemove = []
+		commandedThisTurn = set()
+
+		delayedBy = lambda secs: datetime.datetime.utcnow() + datetime.timedelta(seconds=max(secs, 1))
 
 		for action in session.query(db.Action).filter(
 			db.Action.prev_action == None,
 			db.Action.scheduled_at <= datetime.datetime.utcnow()
-		):
+		).order_by(db.Action.id):
+			uuid = action.microbot.uuid
+			if uuid in commandedThisTurn:
+				# This microbot already received a command this turn. Delay any following commands by a second
+				action.scheduled_at = delayedBy(1)
+				continue
+
+			commandedThisTurn.add(uuid)
 			cmd = action.action
 			argsPkg = action.action_args
 			if argsPkg:
@@ -110,7 +120,7 @@ class ActionWriter(object):
 				kwargs = {}
 			
 			try:
-				actionResult = self._callAction(action.microbot.uuid, cmd, args, kwargs)
+				actionResult = self._callAction(uuid, cmd, args, kwargs)
 			except:
 				tb = traceback.format_exc()
 				self.log.error(tb)
@@ -125,7 +135,7 @@ class ActionWriter(object):
 				completedActions.append(action)
 			elif isinstance(actionResult, (float, int)) and actionResult >= 0:
 				self.log.info("Action {!r} re-scheduled for {} seconds".format(cmd, actionResult))
-				action.scheduled_at = datetime.datetime.utcnow() + datetime.timedelta(seconds=max(actionResult, 1))
+				action.scheduled_at = delayedBy(actionResult)
 			else:
 				raise Exception("Unexpected action result {!r}".format(actionResult))
 
@@ -220,7 +230,14 @@ class MicrobotBluetoothService(object):
 		"""Stop the service."""
 
 	def _onMbStateChange(self, uid, mb):
-		self._updateDbRecord(uid)
+		try:
+			self._updateDbRecord(uid)
+		except:
+			# Cycle the connection
+			self.log.exception("Microbot state change error")
+			mb.disconnect()
+			time.sleep(1)
+			mb.connect()
 
 	def _updateDbRecord(self, mbUid):
 		with self.sessionCtx() as s:
@@ -237,23 +254,14 @@ class MicrobotBluetoothService(object):
 
 			def mGet(fn):
 				"""Retreives value of the function, performs serveral re-attempts on timeout."""
-				attempts_left = 3
-				while True:
-					if not mb.isConnected():
-						return None
-					try:
-						try:
-							return fn()
-						except Lib.exceptions.Timeout:
-							attempts_left -= 1
-							if attempts_left <= 0:
-								# No more attempts left
-								raise
-							time.sleep(3)
-					except:
-						tb = traceback.format_exc()
-						self.log.error(tb)
-						rec.last_error = tb
+				if not mb.isConnected():
+					return None
+				try:
+					return fn()
+				except:
+					tb = traceback.format_exc()
+					self.log.error(tb)
+					rec.last_error = tb
 
 			rec.retracted = mGet(mb.isRetracted)
 			rec.battery = mGet(mb.getBatteryLevel)

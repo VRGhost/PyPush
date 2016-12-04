@@ -63,12 +63,11 @@ class _SubscribedReader(object):
 				# Not cached yet
 				rv = conn.read(service, char)
 				try:
-					handle = conn.onNotify(service, char, lambda data: self._onNotify(key, data))
+					self._subscribe(conn, service, char)
 				except bleExceptions.NotSupported:
 					self._unsupported.add(key)
 				else:
 					self._values[key] = rv
-					self._handles[key] = handle
 		except bleExceptions.Timeout:
 				raise exceptions.Timeout("Read timeout")
 		return rv
@@ -92,7 +91,7 @@ class _SubscribedReader(object):
 
 	def _setCache(self, service, characteristics, value):
 		key = (service, characteristics)
-		self._unsupportedValues[key] = (rv, time.time() + self.UNSUPPORTED_REFRESH_FREQ)
+		self._unsupportedValues[key] = (value, time.time() + self.UNSUPPORTED_REFRESH_FREQ)
 		self._values[key] = value
 
 	def reSubscribe(self):
@@ -102,8 +101,15 @@ class _SubscribedReader(object):
 		"""
 		_oldSubscriptions = self._handles.keys()
 		self.clear()
+
+		conn = self.mb._conn()
 		for (service, char) in _oldSubscriptions:
-			self.read(service, char)
+			self._subscribe(conn, service, char)
+
+	def _subscribe(self, conn, service, char):
+		key = (service, char)
+		if key not in self._handles:
+			self._handles[key] = conn.onNotify(service, char, lambda data: self._onNotify(key, data))
 
 	def _onNotify(self, key, data):
 		if data != self._values[key]:
@@ -367,16 +373,27 @@ class MicrobotPush(iLib.iMicrobot):
 	def getCalibration(self):
 		self.log.info("Getting calibration.")
 		rv = self._reader.read(const.PushServiceId, const.DeviceCalibration)
-		(rv, ) = struct.unpack('B', rv)
+		try:
+			(rv, ) = struct.unpack('B', rv)
+		except:
+			self.log.exception("Data: {!r}".format(rv))
+			rv = 0.0
+
 		return rv / 100.0
 
 	@ConnectedApi
 	def getBatteryLevel(self):
 		self.log.info("Getting battery level.")
 		rv = self._reader.read(const.MicrobotServiceId, "2A19")
-		(rv, ) = struct.unpack('B', rv)
-		return rv / 100.0
 
+		try:
+			(rv, ) = struct.unpack('B', rv)
+		except:
+			self.log.exception("Data: {!r}".format(rv))
+			rv = 0.0
+
+		return rv / 100.0
+		
 	@ConnectedApi
 	def deviceBlink(self, seconds):
 		self.log.info("Blinking device.")

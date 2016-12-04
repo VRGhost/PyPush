@@ -3,6 +3,7 @@ import argparse
 import os
 import logging
 import threading
+import sys
 
 import PyPush.web as PushWeb
 
@@ -20,15 +21,35 @@ def get_arg_parser():
 	parser.add_argument("--ble_device", default="/dev/tty.usbmodem1", help="BLE device")
 	return parser
 
+
+
+def info(type, value, tb):
+   if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+      # we are in interactive mode or we don't have a tty-like
+      # device, so we call the default hook
+      sys.__excepthook__(type, value, tb)
+   else:
+      import traceback, pdb
+      # we are NOT in interactive mode, print the exception...
+      traceback.print_exception(type, value, tb)
+      print
+      # ...then start the debugger in post-mortem mode.
+      pdb.pm()
+
+
+
 def run(host, port, db_uri, ble_driver, ble_device):
 	app = PushWeb.app.PUSH_APP
+	DEBUG = True
 
 	app.flask.config.update({
 		"SQLALCHEMY_DATABASE_URI": db_uri,
-		"DEBUG": True,
+		"DEBUG": DEBUG,
 	})
 	app.setBleConfig(ble_driver, ble_device)
-	app.start(host, port, debug=True)
+	app.start(host, port, debug=DEBUG)
+	# if DEBUG:
+	# 	sys.excepthook = info
 
 
 if __name__ == "__main__":

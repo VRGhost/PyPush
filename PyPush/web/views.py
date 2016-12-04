@@ -154,3 +154,7 @@ def index():
 	return render_template(
 		'index.html',
     )
+
+@app.route('/debug')
+def open_debug():
+   raise Exception("Debugger")

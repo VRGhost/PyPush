@@ -1,6 +1,7 @@
 """Sunscribe/callback architecture."""
 from abc import ABCMeta, abstractmethod, abstractproperty
 
+import logging
 from threading import RLock
 
 class iHandle(object):
@@ -35,6 +36,7 @@ class SubscribeHub(object):
 	"""A hub object that can register/unregister callbacks.""" 
 
 	HANDLE_CLS = SubscriptionHandle
+	log = logging.getLogger(__name__)
 
 	_callbacks = ()
 	_mutex = None
@@ -60,7 +62,10 @@ class SubscribeHub(object):
 	def fireSubscribers(self, *args, **kwargs):
 		"""Call all subscribed functions."""
 		for handle in tuple(self._callbacks):
-			handle.callback(*args, **kwargs)
+			try:
+				handle.callback(*args, **kwargs)
+			except:
+				self.log.exception("Callback exception")
 
 	def getSubscriberCount(self):
 		return len(self._callbacks)
