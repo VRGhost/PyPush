@@ -42,8 +42,8 @@ class _SubscribedReader(object):
     def clear(self):
         """Forgets all notify subscriptions.
 
-        Does not forget list of endpoints not supporting notify as this won't change on the connection
-        restore.
+        Does not forget list of endpoints not supporting notify
+        as this won't change on the connection restore.
         """
         self._handles.clear()
         self._values.clear()
@@ -123,7 +123,10 @@ class _SubscribedReader(object):
 
 
 class _StableAuthorisedConnection(object):
-    """This is a wrapper for the BLE connection that auto-reconnects to the device & re-authorises connection with the microbot.
+    """Auto-reconnecting BLE connection.
+
+    This is a wrapper for the BLE connection that auto-reconnects to
+    the device & re-authorises connection with the microbot.
 
     This wrapper performs `retries` connection-reattempts at most.
     """
@@ -226,7 +229,8 @@ class MicrobotPush(iLib.iMicrobot):
     def _sneakyConnect(self):
         """Private connect procedure that does not validate preexisting connection state.
 
-        Used in the `connect()` API endpoint and in the implementation of stable connection object.
+        Used in the `connect()` API endpoint and in the implementation
+        of stable connection object.
 
         Returns naked BLE connection.
         """

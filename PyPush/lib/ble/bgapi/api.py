@@ -6,7 +6,7 @@ from . import (
     scanner,
     mbRegistry,
     connection,
-    bOrder,
+    byteOrder,
     libLock,
 )
 
@@ -15,8 +15,8 @@ class API(iApi.iApi):
     """BlueGiga API."""
 
     def __init__(self, config):
-        """Config must be a dict with "port" key (specifying tty of the bluegiga token)"""
-        self._mbDb = mbRegistry.MicrobotRegistry(maxAge=60 * 60)
+        """Config must be a dictionary with "device" key (specifying tty of the bluegiga token)"""
+        self._microbotDb = mbRegistry.MicrobotRegistry(maxAge=60 * 60)
         _ble = BlueGigaClient(
             port=config["device"],
             baud=config.get("baud", 115200),
@@ -24,20 +24,22 @@ class API(iApi.iApi):
         )
         self._ble = libLock.LockableBle.RootLock(_ble)
         self._ble.reset_ble_state()
-        self._scanner = scanner.Scanner(self._ble, self._mbDb.onScanEvent)
+        self._scanner = scanner.Scanner(
+            self._ble, self._microbotDb.onScanEvent)
 
     def onScan(self, callback):
-        return self._mbDb.onScanCallback(callback)
+        return self._microbotDb.onScanCallback(callback)
 
     def connect(self, microbot):
+        """Connect to the microbot."""
         conn = connection.BgConnection(microbot, self._ble)
-        conn._open()
+        conn._open() # pylint: disable=W0212
         return conn
 
-    _uidCache = None
+    _uuidCache = None
 
     def getUID(self):
-        if self._uidCache is None:
-            self._uidCache = bOrder.nStrToHHex(
+        if self._uuidCache is None:
+            self._uuidCache = byteOrder.nStrToHHex(
                 self._ble.get_ble_address(), ":")
-        return self._uidCache
+        return self._uuidCache

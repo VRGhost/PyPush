@@ -133,7 +133,7 @@ class MicrobotAction(Resource):
     def get(self, mbId, action):
         chain = ActionChainConstructor(mbId)
         if action in MB_ACTIONS:
-            # A primive microbot action is called upon
+            # A primitive microbot action is called upon
             chain.append(action)
         elif action == CUSTOM_MB_ACTIONS.PRESS:
             chain.append(MB_ACTIONS.extend.key)

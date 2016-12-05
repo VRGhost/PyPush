@@ -9,7 +9,7 @@ from PyPush.lib.ble.exceptions import RemoteException
 
 import PyPush.lib.ble.bgapi.connection as ConMod
 
-STR_TO_HEX = "PyPush.lib.ble.bgapi.bOrder.nStrToHHex"
+STR_TO_HEX = "PyPush.lib.ble.bgapi.byteOrder.nStrToHHex"
 
 ServiceMock = collections.namedtuple("ServiceMock", ["uuid"])
 CharacteristicMock = collections.namedtuple(
@@ -77,7 +77,7 @@ def test_connection_open():
         ["CHAR:3", "CHAR:4", "CHAR:5", "CHAR:6"])
 
     # test _findService
-    assert conn._findService("SER_1") == S1
+    assert conn._findService("SER_1") == S1, conn._findService("SER_1")
     assert conn._findService("SER_2") == S2
     assert conn._findService("SER_3") == S3
     with pytest.raises(KeyError):

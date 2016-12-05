@@ -17,7 +17,7 @@ from .. import (
     exceptions,
 )
 
-from . import bOrder
+from . import byteOrder
 
 BgCharacteristic = collections.namedtuple(
     "BgCharacteristic", ["uuid", "gatt", "human_uuid"])
@@ -253,7 +253,7 @@ class BgConnection(iApi.iConnection):
         raise KeyError(uuid)
 
     def _humanServiceName(self, service):
-        return bOrder.nStrToHHex(service.uuid)
+        return byteOrder.nStrToHHex(service.uuid)
 
     def _initBleConnection(self, conn):
         """This method initialises internal state of the BLE connection by populating its internal dictionaries."""
@@ -303,7 +303,7 @@ class BgConnection(iApi.iConnection):
                 allChars = conn.get_characteristics()
                 newChars = frozenset(el.handle for el in allChars)
                 self._serviceToCharacteristics[service.uuid] = tuple(
-                    BgCharacteristic(ch.uuid, ch, bOrder.nStrToHHex(ch.uuid))
+                    BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))
                     for ch in allChars if ch.handle in (newChars - oldChars)
                 )
                 oldChars = newChars
