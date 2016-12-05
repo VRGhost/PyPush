@@ -9,7 +9,7 @@ import datetime
 
 from .. import iApi
 
-from . import bOrder
+from . import byteOrder
 
 
 class BgMicrobot(iApi.iMicrobotPush):
@@ -31,7 +31,7 @@ class BgMicrobot(iApi.iMicrobotPush):
         return self.getNiceAddr()
 
     def getNiceAddr(self):
-        return bOrder.nStrToHHex(self._addr, sep=":")
+        return byteOrder.nStrToHHex(self._addr, sep=":")
 
     def getApiTarget(self):
         """Returns ble `target` object that is to be used for bgapi purposes."""
@@ -96,7 +96,7 @@ class MicrobotRegistry(object):
         evt.parse_advertisement_data()
         addr = evt.get_sender_address()
         name = "Unknown Microbot ({:02X}:{:02X})".format(
-            *bOrder.nStrToHBytes(addr[:2]))
+            *byteOrder.nStrToHBytes(addr[:2]))
 
         for el in evt.adv_payload:
             if el.type_name == "BLE_GAP_AD_TYPE_MANUFACTURER_SPECIFIC_DATA":
