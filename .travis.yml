@@ -5,4 +5,6 @@ python:
 install:
   - pip install -r requirements/dev.txt
 # command to run tests
-script: bin/test.sh
+script: 
+  - bin/test.sh
+  - bin/pylint_score_guard.sh
