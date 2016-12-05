@@ -1,12 +1,12 @@
 """Web server for managing Microbvots."""
 
 from . import (
-	const,
+    const,
 )
 
 from . import (
-	app,
-	db,
-	views,
-	ble,
+    app,
+    db,
+    views,
+    ble,
 )
