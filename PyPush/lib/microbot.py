@@ -372,27 +372,28 @@ class MicrobotPush(iLib.iMicrobot):
 	@ConnectedApi
 	def getCalibration(self):
 		self.log.info("Getting calibration.")
-		rv = self._reader.read(const.PushServiceId, const.DeviceCalibration)
+		data = self._reader.read(const.PushServiceId, const.DeviceCalibration)
 		try:
-			(rv, ) = struct.unpack('B', rv)
+			(rv, ) = struct.unpack('B', data)
 		except:
-			self.log.exception("Data: {!r}".format(rv))
-			rv = 0.0
-
-		return rv / 100.0
+			self.log.exception("Data: {!r}".format(data))
+			rv = None
+		else:
+			rv = rv / 100.0
+		return rv
 
 	@ConnectedApi
 	def getBatteryLevel(self):
 		self.log.info("Getting battery level.")
-		rv = self._reader.read(const.MicrobotServiceId, "2A19")
-
+		data = self._reader.read(const.MicrobotServiceId, "2A19")
 		try:
-			(rv, ) = struct.unpack('B', rv)
+			(rv, ) = struct.unpack('B', data)
 		except:
-			self.log.exception("Data: {!r}".format(rv))
-			rv = 0.0
-
-		return rv / 100.0
+			self.log.exception("Data: {!r}".format(data))
+			rv = None
+		else:
+			rv = rv / 100.0
+		return rv
 		
 	@ConnectedApi
 	def deviceBlink(self, seconds):

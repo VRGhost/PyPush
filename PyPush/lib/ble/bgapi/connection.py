@@ -247,8 +247,21 @@ class BgConnection(iApi.iConnection):
 
 	def _initBleConnection(self, conn):
 		"""This method initialises internal state of the BLE connection by populating its internal dictionaries."""
+
+		def _retryOnTimeout(fn, retries=5):
+			while True:
+				retries -= 1
+				try:
+					return fn()
+				except Timeout:
+					if retries > 0:
+						time.sleep(3)
+						continue
+					else:
+						raise
+
 		with conn.transaction():
-			conn.read_by_group_type(GATTService.PRIMARY_SERVICE_UUID, timeout=10)
+			_retryOnTimeout(lambda: conn.read_by_group_type(GATTService.PRIMARY_SERVICE_UUID, timeout=10))
 			#conn.read_by_group_type(GATTService.SECONDARY_SERVICE_UUID)
 			
 			assert not conn.get_characteristics()
@@ -262,7 +275,9 @@ class BgConnection(iApi.iConnection):
 					GATTCharacteristic.USER_DESCRIPTION,
 				):
 					try:
-						conn.read_by_type(service, serviceType, timeout=10)
+						_retryOnTimeout(
+							lambda: conn.read_by_type(service, serviceType, timeout=10)
+						)
 					except RemoteError as err:
 						if err.code == 0x040A:
 							# Attribute not found. Seems to be occasional occurence with microbots.
