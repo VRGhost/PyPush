@@ -62,7 +62,7 @@ class MicrobotRegistry(object):
 
     def __init__(self, maxAge=0):
         """Any microbot that had not been showing signs of life for over `maxAge` (if > 0) will be erased from the registry."""
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._bots = {}
         self._maxAge = maxAge
         self._scanCallbacks = []

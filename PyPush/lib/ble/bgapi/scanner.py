@@ -2,11 +2,14 @@
 import threading
 import datetime
 import time
+import logging
 
 from . import const
 
 
 class _ScanThread_(threading.Thread):
+
+    log = logging.getLogger(__name__)
 
     def __init__(self, ble, maxAge, callback):
         super(_ScanThread_, self).__init__()
@@ -17,20 +20,25 @@ class _ScanThread_(threading.Thread):
 
     def run(self):
         while True:
-            results = self.ble.scan_all(timeout=0.5)
-
-            # deduplicate & remove old scan responses
-            if results:
-                results.sort(key=lambda el: el.created, reverse=True)
-                seen = set()
-                minTime = time.time() - self.maxAge
-                for el in results:
-                    addr = el.get_sender_address()
-                    if addr not in seen or el.created >= minTime:
-                        self._cb(el)
-                    seen.add(addr)
+            try:
+                self.step()
+            except Exception:
+                self.log.exception("Scan thread exception.")
             time.sleep(0.5)
 
+    def step(self):
+        results = self.ble.scan_all(timeout=0.5)
+
+        # deduplicate & remove old scan responses
+        if results:
+            results.sort(key=lambda el: el.created, reverse=True)
+            seen = set()
+            minTime = time.time() - self.maxAge
+            for el in results:
+                addr = el.get_sender_address()
+                if addr not in seen or el.created >= minTime:
+                    self._cb(el)
+                seen.add(addr)
 
 class Scanner(object):
 

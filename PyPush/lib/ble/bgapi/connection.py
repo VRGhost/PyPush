@@ -7,6 +7,7 @@ import threading
 import contextlib
 import functools
 import datetime
+import Queue
 
 from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException, RemoteError, Timeout
 
@@ -22,7 +23,7 @@ from . import byteOrder
 BgCharacteristic = collections.namedtuple(
     "BgCharacteristic", ["uuid", "gatt", "human_uuid"])
 
-
+RetryLog = logging.getLogger("retry_call_if_fails")
 def retry_call_if_fails(connection, func, attempts, fail_delay=3,
                         delayed_unlock=0.5, retry_on_remote_err=(), retry_on_timeout=False):
     attempts_left = attempts
@@ -39,7 +40,7 @@ def retry_call_if_fails(connection, func, attempts, fail_delay=3,
             else:
                 raise
         except Timeout:
-            if retry_on_timeout:
+            if retry_on_timeout and attempts_left > 0:
                 pass
             else:
                 raise
@@ -56,10 +57,10 @@ class _ConnNotify(async.SubscribeHub):
     _isActive = False
     _timer = None
 
-    def __init__(self, bgConnection, characteristic):
+    def __init__(self, hub, characteristic):
         super(_ConnNotify, self).__init__()
         self.characteristic = characteristic
-        self._conn = bgConnection
+        self.hub = hub
 
     def onSubscribe(self, handle):
         super(_ConnNotify, self).onSubscribe(handle)
@@ -72,32 +73,34 @@ class _ConnNotify(async.SubscribeHub):
     def _manage(self):
         """Manage 'subscribed' status."""
         with self._mutex:
-            shouldBeActive = self.getSubscriberCount() > 0
-
-            if shouldBeActive != self._isActive:
+            if self.getSubscriberCount() > 0 and not self._isActive:
                 conn = self._getBleConn()
                 for handle in conn.get_handles_by_uuid(
                         self.characteristic.uuid):
                     conn.assign_attrclient_value_callback(
-                        handle, self._onNotify)
-
+                        handle, self._onBgapiNotify)
                 retry_call_if_fails(
                     conn,
                     lambda: conn.characteristic_subscription(
-                        self.characteristic.gatt, indicate=False, notify=shouldBeActive, timeout=10),
+                        self.characteristic.gatt, indicate=False,
+                        notify=True, timeout=10
+                    ),
                     attempts=5, retry_on_remote_err=(0x0181, ), retry_on_timeout=True
                 )
 
-                # State synced.
-                self._isActive = shouldBeActive
+                # Subscribed for notifications
+                self._isActive = True
 
     def _getBleConn(self):
-        assert self._conn.isActive(), self._bgConn
-        return self._conn._bleConn
+        conn = self.hub.conn
+        assert conn.isActive(), conn
+        return conn._bleConn
 
-    def _onNotify(self, data):
-        self._conn._updateLastCallTime()
-        self.fireSubscribers(data)
+    def _onBgapiNotify(self, data):
+        self.hub.bgapiQueue.put(
+            (self, data)
+        )
+        self.hub.conn._updateLastCallTime()
 
 
 class _ConnNotifyHub(object):
@@ -105,7 +108,16 @@ class _ConnNotifyHub(object):
     def __init__(self, conn):
         self.conn = conn
         self.subscriberHubs = {}
-        self._mutex = threading.Lock()
+        self._mutex = threading.RLock()
+        self.bgapiQueue = Queue.Queue()
+
+        self.apiThread = threading.Thread(
+            name="{}.thread".format(__name__),
+            target=self._hubThreadTarget,
+            args=(self.bgapiQueue,) ,
+        )
+        self.apiThread.daemon = True
+        self.apiThread.start()
 
     def addCallback(self, characteristic, cb):
         key = characteristic.uuid
@@ -113,10 +125,18 @@ class _ConnNotifyHub(object):
             try:
                 subs = self.subscriberHubs[key]
             except KeyError:
-                subs = _ConnNotify(self.conn, characteristic)
+                subs = _ConnNotify(self, characteristic)
                 self.subscriberHubs[key] = subs
         return subs.subscribe(cb)
 
+    def _hubThreadTarget(self, bgapiQueue):
+        log = logging.getLogger("_ConnNotifyHub.thread")
+        while True:
+            (handler, data) = bgapiQueue.get()
+            try:
+                handler.fireSubscribers(data)
+            except Exception:
+                log.exception("Hub target exception.")
 
 def ActiveApi(func):
     """Decorator that ensures that the connection is active before the payload function is executed.

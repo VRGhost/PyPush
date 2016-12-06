@@ -79,21 +79,25 @@ class ActionWriter(object):
         """A separate daemon thread that writes back actions scheduled in the db."""
         while True:
             with self.service.sessionCtx() as session:
-                self._step(session, self.service.getBleMicrobots())
+                try:
+                    self._step(session, self.service.getBleMicrobots())
+                except Exception:
+                    self.log.exception("Write actions exception.")
+                    
                 nextActionTime = session.query(
                     func.min(db.Action.scheduled_at)
                 ).filter(
-                    db.Action.prev_action is None
+                    db.Action.prev_action == None
                 ).scalar()
 
+            now = datetime.datetime.utcnow()
             if nextActionTime is None:
                 waitTime = 30
+            elif nextActionTime < now:
+                waitTime = 0;
             else:
-                waitTime = (
-                    nextActionTime -
-                    datetime.datetime.utcnow()).seconds
+                waitTime = (nextActionTime - now).seconds
                 waitTime = min(max(waitTime, 1), 10)
-
             self._wakeup.wait(waitTime)
             self._wakeup.clear()
 
@@ -106,7 +110,7 @@ class ActionWriter(object):
         ) + datetime.timedelta(seconds=max(secs, 1))
 
         for action in session.query(db.Action).filter(
-                db.Action.prev_action is None,
+                db.Action.prev_action == None,
                 db.Action.scheduled_at <= datetime.datetime.utcnow()
         ).order_by(db.Action.id):
             uuid = action.microbot.uuid
@@ -119,6 +123,7 @@ class ActionWriter(object):
             commandedThisTurn.add(uuid)
             cmd = action.action
             argsPkg = action.action_args
+            self.log.info("Executing {}".format([cmd, argsPkg]))
             if argsPkg:
                 assert len(argsPkg) == 2, argsPkg
                 (args, kwargs) = argsPkg
@@ -244,7 +249,7 @@ class MicrobotBluetoothService(object):
     def _onMbStateChange(self, uid, mb):
         try:
             self._updateDbRecord(uid)
-        except:
+        except Exception:
             # Cycle the connection
             self.log.exception("Microbot state change error")
             mb.disconnect()

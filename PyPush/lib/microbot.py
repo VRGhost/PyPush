@@ -474,13 +474,13 @@ class MicrobotPush(iLib.iMicrobot):
 
         SERVICE_ID = const.MicrobotServiceId
         STATUS_CHAR = "2A98"
-        _NOTIFY_Q_ = Queue.Queue()
+        notifyQ = Queue.Queue()
         with bleConnection.transaction():
             handle = bleConnection.onNotify(
-                SERVICE_ID, STATUS_CHAR, _NOTIFY_Q_.put)
+                SERVICE_ID, STATUS_CHAR, notifyQ.put)
             bleConnection.write(SERVICE_ID, STATUS_CHAR, data)
             try:
-                reply = _NOTIFY_Q_.get(timeout=20)
+                reply = notifyQ.get(timeout=20)
             except Queue.Empty:
                 self.log.info(
                     "Failed to check status of {!r}".format(

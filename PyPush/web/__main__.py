@@ -2,6 +2,7 @@
 import argparse
 import os
 import logging
+import logging.config
 import threading
 import sys
 
@@ -16,6 +17,11 @@ def get_arg_parser():
 
     parser = argparse.ArgumentParser(
         description="Microbot Push management daemon.")
+    parser.add_argument(
+        "--debug",
+        default=False, action='store_true',
+        help="Run in debug mode",
+    )
     parser.add_argument(
         "--port",
         default=5000,
@@ -37,36 +43,66 @@ def get_arg_parser():
     return parser
 
 
-def info(type, value, tb):
-    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-        # we are in interactive mode or we don't have a tty-like
-        # device, so we call the default hook
-        sys.__excepthook__(type, value, tb)
+
+
+def run(debug, host, port, db_uri, ble_driver, ble_device):
+    if debug:
+        logging.basicConfig(level=logging.INFO)
     else:
-        import traceback
-        import pdb
-        # we are NOT in interactive mode, print the exception...
-        traceback.print_exception(type, value, tb)
-        print
-        # ...then start the debugger in post-mortem mode.
-        pdb.pm()
+        logFile = os.path.join(PushWeb.const.TMP_DIR, "PyPush.log")
+        logging.config.dictConfig({
+            'version': 1,
+            'handlers': {
+                'console': {
+                    'class': 'logging.StreamHandler',
+                    'level': 'INFO',
+                    'formatter': 'detailed',
+                    'stream': 'ext://sys.stdout',
+                },
+                'file': {
+                    'class': 'logging.handlers.RotatingFileHandler',
+                    'level': 'DEBUG',
+                    'formatter': 'detailed',
+                    'filename': logFile,
+                    'mode': 'a',
+                    'maxBytes': 10485760,
+                    'backupCount': 5,
+                },
 
+            },
+            'formatters': {
+                'detailed': {
+                    'format': '%(asctime)s %(module)-17s line:%(lineno)-4d ' \
+                    '%(levelname)-8s %(message)s',
+                },
+                'email': {
+                    'format': 'Timestamp: %(asctime)s\nModule: %(module)s\n' \
+                    'Line: %(lineno)d\nMessage: %(message)s',
+                },
+            },
+            'loggers': {
+                'extensive': {
+                    'level':'DEBUG',
+                    'handlers': ['file',]
+                    },
+            },
+            })
+        logging.basicConfig(
+            filename=logFile,
+            level=logging.INFO
+        )
 
-def run(host, port, db_uri, ble_driver, ble_device):
     app = PushWeb.app.PUSH_APP
-    DEBUG = True
 
     app.flask.config.update({
         "SQLALCHEMY_DATABASE_URI": db_uri,
-        "DEBUG": DEBUG,
+        "DEBUG": debug,
     })
     app.setBleConfig(ble_driver, ble_device)
-    app.start(host, port, debug=DEBUG)
-    # if DEBUG:
-    # 	sys.excepthook = info
+    app.start(host, port, debug=debug)
 
 
 if __name__ == "__main__":
     args = get_arg_parser().parse_args()
-    logging.basicConfig(level=logging.INFO)
-    run(args.host, args.port, args.db_uri, args.ble_driver, args.ble_device)
+    
+    run(args.debug, args.host, args.port, args.db_uri, args.ble_driver, args.ble_device)

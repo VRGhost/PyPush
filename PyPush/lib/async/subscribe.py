@@ -68,7 +68,7 @@ class SubscribeHub(object):
         for handle in tuple(self._callbacks):
             try:
                 handle.callback(*args, **kwargs)
-            except:
+            except Exception:
                 self.log.exception("Callback exception")
 
     def getSubscriberCount(self):
@@ -76,5 +76,10 @@ class SubscribeHub(object):
 
     def _unsubscribe(self, handle):
         with self._mutex:
-            self._callbacks.remove(handle)
+            try:
+                self._callbacks.remove(handle)
+            except ValueError:
+                # No longer in the list
+                pass
+
         self.onUnsubscribe(handle)
