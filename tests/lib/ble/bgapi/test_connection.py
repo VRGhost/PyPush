@@ -1,5 +1,5 @@
 import collections
-
+import time
 import mock
 import pytest
 
@@ -200,7 +200,7 @@ def test_on_notify():
     (_bleH, _cbHandle) = ble.assign_attrclient_value_callback.call_args[0]
 
     _cbHandle("BLE DATA PASSED")
-
+    time.sleep(0.2) # Give internal thread a chance to work
     callFn.assert_called_once_with("BLE DATA PASSED")
 
     callFn.reset_mock()
