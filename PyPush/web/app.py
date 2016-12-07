@@ -54,7 +54,7 @@ class PyPushApp(object):
         with self.flask.app_context():
             self.db.create_all()
 
-        if os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not self.flask.debug:
             self.ble.start(*self._bleConfig)
 
         self.flask.run(
