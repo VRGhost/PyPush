@@ -9,4 +9,5 @@ from . import (
     db,
     views,
     ble,
+    main,
 )

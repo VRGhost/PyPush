@@ -9,9 +9,13 @@ import functools
 import datetime
 import Queue
 
-from bgapi.module import BLEConnection, GATTService, GATTCharacteristic, BlueGigaModuleException, RemoteError, Timeout
+from bgapi.module import (
+    BLEConnection, GATTService, GATTCharacteristic,
+    BlueGigaModuleException, RemoteError, Timeout,
+)
 
-import PyPush.lib.async as async
+
+from PyPush.lib import async as async
 
 from .. import (
     iApi,

@@ -8,19 +8,12 @@ from .. import const
 from . import (
     iApi,
     exceptions,
+    bgapi,
 )
-
 
 def getBgApi(config):
     from . import bgapi
     return bgapi.API(config)
-
-
-def getPyBle():
-    """OSX BLE library."""
-    import pyble
-    from . import PyBLEWrapper
-    return PyBLEWrapper.API(pyble)
 
 
 def getLib(config):

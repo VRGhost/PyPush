@@ -2,6 +2,8 @@
 git+git://github.com/VRGhost/bgapi.git#egg=bgapi
 
 enum
+python-daemon
+lockfile
 
 sqlalchemy
 flask
