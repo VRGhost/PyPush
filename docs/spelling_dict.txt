@@ -12,3 +12,5 @@ microbot
 timeout
 tty
 UUID
+db
+microbots
