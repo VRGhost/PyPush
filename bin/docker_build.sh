@@ -14,4 +14,4 @@ docker build -t vrghost/pypush:latest .
 docker push vrghost/pypush
 
 # Run with
-#  docker run --device=/dev/ttyACM0 -e DEVICE='/dev/ttyACM0' -e PORT='59730' -p '59730:59730' --name pypush vrghost/pypush
+#  docker run --device=/dev/ttyACM0 -e DEVICE='/dev/ttyACM0' -e PORT='59730' -p '59730:59730' -d --name pypush vrghost/pypush

@@ -11,4 +11,4 @@ WORKDIR /usr/src/PyPush
 RUN pip install --no-cache-dir -r requirements.txt
 
 EXPOSE $PORT
-CMD ["./bin/serve.sh", "--port", $PORT, "--ble_device", $DEVICE]
+CMD [ "sh", "-c", "./bin/serve.sh --host 0.0.0.0 --port \"${PORT}\" --ble_device \"${DEVICE}\" " ]

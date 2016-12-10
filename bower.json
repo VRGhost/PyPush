@@ -20,6 +20,7 @@
     "angular-resource": "^1.5.9",
     "angular-bootstrap": "^2.3.0",
     "angular-xeditable": "^0.5.0",
-    "components-font-awesome": "^4.7.0"
+    "components-font-awesome": "^4.7.0",
+    "bootstrap": "^3.3.7"
   }
 }

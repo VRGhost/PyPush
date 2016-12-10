@@ -137,7 +137,7 @@ class MicrobotReconnector(object):
     def step(self):
         """Reconnect all previously disconnected microbots."""
         for mb in self.service.getBleMicrobots():
-            if not mb.isConnected():
+            if not mb.isConnected() and mb.isPaired():
                 uid = mb.getUID()
                 if self.minReconnectTime[uid] < time.time():
                     self.log.info("Connecting to {!r}".format(uid))

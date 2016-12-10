@@ -8,5 +8,8 @@ lockfile
 sqlalchemy
 flask
 flask-sqlalchemy
-flask-bower
+
+#flask-bower
+git+git://github.com/VRGhost/flask-bower.git#egg=flask-bower
+
 flask-restful

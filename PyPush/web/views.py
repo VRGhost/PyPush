@@ -68,10 +68,6 @@ class ActionChainConstructor(object):
 
 class MicrobotList(Resource):
 
-    def post(self, mbId):
-        args = parser.parse_args()
-        print repr(args)
-        print repr(mbId)
 
     def get(self):
         out = []

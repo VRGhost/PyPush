@@ -54,6 +54,7 @@ class MicrobotBluetoothService(object):
         key = microbot.getUID()
         self._microbots[key] = microbot
         microbot.onStateChange(lambda mb: self._onMbStateChange(key, mb))
+        self._updateDbRecord(key)
         self._daemon.wakeup()
 
     def _onMbLost(self, microbot):

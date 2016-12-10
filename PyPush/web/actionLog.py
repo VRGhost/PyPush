@@ -80,7 +80,6 @@ class MicrobotActionLog(object):
         This has side effect of releaseing first file name.
         """
         with self.mutex:
-            print tuple(self.allFileNames())
             allFnames = list(self.allFileNames())
             allFnames.reverse()
             for (fname, older) in zip(allFnames[1:], allFnames):
