@@ -1,5 +1,5 @@
 import time
-from flask import render_template
+from flask import render_template, Response
 
 from flask_restful import Resource, Api, reqparse
 
@@ -22,24 +22,37 @@ class ActionChainConstructor(object):
 
     def __init__(self, microbotId):
         self._actions = []
-        self._mbId = PUSH_APP.ble.getDbId(microbotId)
-        assert self._mbId, microbotId
+        self._actionLog = PUSH_APP.microbotActionLog
+        
+        _mbId = PUSH_APP.ble.getDbId(microbotId)
+        self._microbot = PUSH_APP.db.session.query(db.Microbot).get(_mbId)
 
     def clear(self):
+        """Clear the action chain."""
         self._actions[:] = []
 
     def append(self, action, args=(), kwargs=None):
+        """Append new action to the end of the action chain."""
+        action_args=(args, kwargs or {})
+
         rec = db.Action(
-            microbot_id=self._mbId,
+            microbot_id=self._microbot.id,
             action=action,
             action_args=(args, kwargs or {}),
         )
         if self._actions:
             rec.prev_action = self._actions[-1]
         self._actions.append(rec)
+        self._actionLog.logOrderReceived(
+            self._microbot,
+            action,
+            action_args[0], action_args[1],
+        )
         return rec
 
     def commit(self):
+        """Commit the constructed action log to the database."""
+
         if not self._actions:
             return ()
 
@@ -155,6 +168,10 @@ api.add_resource(
     MicrobotAction,
     '/api/microbots/<string:mbId>/<string:action>')
 
+
+@app.route("/info/action_log.csv")
+def get_action_log():
+    return Response(PUSH_APP.microbotActionLog.readAll(), mimetype='text/csv')
 
 @app.route("/")
 def index():

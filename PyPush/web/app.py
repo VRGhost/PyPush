@@ -7,13 +7,17 @@ from flask_bower import Bower
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 
-from . import const, db
+from . import (
+    const,
+    db,
+    actionLog,
+)
 
 
 class PyPushApp(object):
     """PyPush integration app object."""
 
-    __slots__ = ("flask", "db", "bower", "ble", "restful", "_bleConfig")
+    __slots__ = ("flask", "db", "bower", "ble", "restful", "_bleConfig", "microbotActionLog")
 
     def __init__(self):
         self.flask = Flask("PyPush.web",
@@ -23,6 +27,10 @@ class PyPushApp(object):
                                const.PUSH_WEB_DIR, "templates"),
                            )
         self._applyDefaultConfig()
+
+        self.microbotActionLog = actionLog.MicrobotActionLog(
+            os.path.join(const.TMP_DIR, "microbot_action_log.csv"),
+        )
 
         self.restful = Api(self.flask)
         self.bower = Bower(self.flask)

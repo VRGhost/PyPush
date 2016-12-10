@@ -90,10 +90,6 @@ def main(debug, host, port, db_uri, ble_driver, ble_device):
                     },
             },
             })
-        logging.basicConfig(
-            filename=logFile,
-            level=logging.INFO
-        )
 
     app = PushWeb.app.PUSH_APP
 

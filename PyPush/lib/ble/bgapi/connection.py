@@ -305,11 +305,12 @@ class BgConnection(iApi.iConnection):
             oldChars = frozenset([])
 
             for service in conn.get_services():
-                conn.find_information(service)
+                conn.find_information(service, timeout=10)
+
                 for serviceType in (
                         GATTCharacteristic.CHARACTERISTIC_UUID,
                         GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
-                        GATTCharacteristic.USER_DESCRIPTION,
+                        # GATTCharacteristic.USER_DESCRIPTION,
                 ):
                     try:
                         _retryOnTimeout(

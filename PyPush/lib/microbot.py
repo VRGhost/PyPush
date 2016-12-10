@@ -221,9 +221,9 @@ class MicrobotPush(iLib.iMicrobot):
 
     @NotConnectedApi
     def connect(self):
-        assert not self.isConnected()
-        self._stableConn = _StableAuthorisedConnection(
-            self, self._sneakyConnect())
+        with self._mutex:
+            self._stableConn = _StableAuthorisedConnection(
+                self, self._sneakyConnect())
         self._fireChangeState()
 
     def _sneakyConnect(self):
@@ -451,7 +451,8 @@ class MicrobotPush(iLib.iMicrobot):
         return rv
 
     def isConnected(self):
-        return bool(self._stableConn and self._stableConn.isActive())
+        with self._mutex:
+            return bool(self._stableConn and self._stableConn.isActive())
 
     def isPaired(self):
         return self._keyDb.hasKey(self.getUID())
@@ -485,7 +486,7 @@ class MicrobotPush(iLib.iMicrobot):
                 self.log.info(
                     "Failed to check status of {!r}".format(
                         self._bleMb))
-                return "\xff" * 17
+                return ord("\xff")
             finally:
                 handle.cancel()
 

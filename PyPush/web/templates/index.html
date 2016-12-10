@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en">
 <head>
-	<meta charset="UTF-8"> 
+	<meta charset="UTF-8">
+	<meta http-equiv="pragma" content="no-cache">
+
 	<title>PyPush</title>
 
 	<script src="{{ url_for('bower.static', filename='angular/angular.min.js') }}"></script>
@@ -24,88 +26,89 @@
 	 	<h1>Microbots Push</h1>
 	 	{% raw %}
 	 	
+	 	<hr/>
+
 	 	<div ng-app="PyPushApp" ng-controller="PushList">
+	 		<div class="row">
+	 			<div class="col-md-3"><h3>Name</h3></div>
+	 			<div class="col-md-2"><h3>UUID</h3></div>
+	 			<div class="col-md-2"><h3>Battery</h3></div>
+	 			<div class="col-md-2"><h3>Calibration</h3></div>
+	 			<div class="col-md-2"><h3>Status</h3></div>
+	 			<div class="col-md-1">&nbsp;<!--button--></div>
+	 		</div>
+		 	<div class="row" ng-repeat-start="(id, rec) in microbots track by id">
+		 		<div class="col-md-3">
+		 			<!-- Name -->
+		 			<div class="popover-wrapper">
+						<a href="#" editable-text="rec.name" onbeforesave="updateName(rec, $data)">
+							{{ rec.name }}
+						</a>
+					</div>
 
-	 		<table class="table">
-	 			<colgroup>
-	 				<col span="1" width="4" /> <!-- Name -->
-	 				<col span="1" width="1" /> <!-- UUID -->
-	 				<col span="1" width="2" /> <!-- Battery -->
-	 				<col span="1" width="2" /> <!-- Calibration -->
-	 				<col span="2" width="2" /> <!-- Status & Buttons -->
-	 			</colgroup>
-	 			<thead>
-	 				<tr>
-	 					<td>Name</td><td>UUID</td>
-	 					<td>Battery</td><td>Calibration</td>
-	 					<td>Status</td>
-	 					<td>Actions</td>
-	 				</tr>
-	 			</thead>
-	 			<tbody>
-	 				<tr data-ng-repeat="(id, rec) in microbots track by id">
-	 					<td>
-	 						<div class="popover-wrapper">
-	 							<a href="#" editable-text="rec.name" onbeforesave="updateName(rec, $data)">
-		 							{{ rec.name }}
-		 						</a>
-	 						</div>
-	 					</td><td>{{ rec.uuid }}</td>
-	 					<td>
-	 						<uib-progressbar value="rec.battery" max="1" title="Battery Level">{{ ((rec.battery * 100) || 0) | number:0 }}%</uib-progressbar>
-	 					</td>
-	 					<td>
-	 						<div class="popover-wrapper">
-	 							<a href="#" editable-text="rec.calibration" onbeforesave="updateCalibration(rec, $data)" edit-disabled="(rec.calibration == null) || (rec.actions.indexOf('calibrate') < 0)">
-	 								<uib-progressbar value="rec.calibration" max="1" title="Calibration">{{ ((rec.calibration * 100) || 0) | number:0 }}%</uib-progressbar>
-	 							</a>
-	 						</div>
-	 					</td>
-	 					<td>
-	 						<!-- Status -->
-	 						<div class="row">
-		 						<div ng-switch="rec.status" class="col-md-1">
-		 							<i ng-switch-when="connected" class="fa fa-refresh" aria-hidden="true" uib-tooltip="Connected"></i>
-		 							<i ng-switch-when="not_connected" class="fa fa-plug" aria-hidden="true" uib-tooltip="Disconnected"></i>
-		 							<i ng-switch-when="not_paired" class="fa fa-chain-broken" aria-hidden="true" uib-tooltip="Not Paired"></i>
-		 							<p ng-switch-default>
-		 								{{ rec.status }}
-		 							</p>
-		 						</div>
-	 						<div class="col-md-1">
-		 						<div ng-if="rec.error">
-		 							<i class="fa fa-exclamation-triangle" aria-hidden="true" uib-tooltip-html="<tt>{{ rec.error }}</tt>"></i>
-		 						</div>
-	 						</div>
-	 						
-		 						<div class="col-md-1">
-			 						<i uib-tooltip="Extended" ng-if="rec.retracted === false" class="fa fa-dot-circle-o" aria-hidden="true"></i>
-			 						<i uib-tooltip="Retracted" ng-if="rec.retracted === true" class="fa fa-circle-o" aria-hidden="true"></i>
-		 						</div>
-	 						</div>
-	 					</td>
-	 					<td>
-	 						   <div class="btn-group" uib-dropdown ng-if="rec.actions.length > 0">
-							      <button id="split-button" type="button" class="btn btn-primary btn-sm" ng-click="doAction(rec.uuid, rec.actions[0])"> {{ rec.actions[0] }} </button>
-							      <button type="button" class="btn btn-primary btn-sm" uib-dropdown-toggle>
-							        <span class="caret"></span>
-							        <span class="sr-only">Split button!</span>
-							      </button>
-							      <ul class="dropdown-menu" uib-dropdown-menu role="menu" aria-labelledby="split-button">
-							        <li role="menuitem" data-ng-repeat="action in rec.actions" ng-if="action != 'calibrate'">
-							        	<a href="#" ng-click="doAction(rec.uuid, action)">{{ action }}</a>
-							        </li>
-							      </ul>
-							    </div>
-	 					</td>
-	 				</tr>
-	 			</tbody>
-	 		</table>
-
-
+		 		</div>
+		 		<div class="col-md-2">
+		 			<!-- UUID -->
+		 			{{ rec.uuid }}
+		 		</div>
+		 		<div class="col-md-2">
+		 			<!-- Battery -->
+		 			<uib-progressbar value="rec.battery" max="1" title="Battery Level">{{ ((rec.battery * 100) || 0) | number:0 }}%</uib-progressbar>
+		 		</div>
+		 		<div class="col-md-2">
+		 			<!-- Calibration -->
+		 			<div class="popover-wrapper">
+						<a href="#" editable-text="rec.calibration" onbeforesave="updateCalibration(rec, $data)" edit-disabled="(rec.calibration == null) || (rec.actions.indexOf('calibrate') < 0)">
+							<uib-progressbar value="rec.calibration" max="1" title="Calibration">{{ ((rec.calibration * 100) || 0) | number:0 }}%</uib-progressbar>
+						</a>
+					</div>
+		 		</div>
+		 		<div class="col-md-2">
+		 			<!-- Status -->
+					<div class="row">
+						<div ng-switch="rec.status" class="col-md-1">
+							<i ng-switch-when="connected" class="fa fa-refresh" aria-hidden="true" uib-tooltip="Connected"></i>
+							<i ng-switch-when="not_connected" class="fa fa-plug" aria-hidden="true" uib-tooltip="Disconnected"></i>
+							<i ng-switch-when="not_paired" class="fa fa-chain-broken" aria-hidden="true" uib-tooltip="Not Paired"></i>
+							<p ng-switch-default>
+								{{ rec.status }}
+							</p>
+						</div>
+						<div class="col-md-1">
+							<div ng-if="rec.error">
+								<i class="fa fa-exclamation-triangle" aria-hidden="true" uib-tooltip-html="<tt>{{ rec.error }}</tt>"></i>
+							</div>
+						</div>
+						<div class="col-md-1">
+							<i uib-tooltip="Extended" ng-if="rec.retracted === false" class="fa fa-dot-circle-o" aria-hidden="true"></i>
+							<i uib-tooltip="Retracted" ng-if="rec.retracted === true" class="fa fa-circle-o" aria-hidden="true"></i>
+						</div>
+					</div>
+		 		</div>
+		 		<div class="col-md-1">
+		 			<button type="button" class="btn btn-s btn-primary" ng-model="collapseStatus" uib-btn-checkbox btn-checkbox-true="0" btn-checkbox-false="1">
+				        <i class="fa fa-chevron-circle-down" aria-hidden="true"></i>
+				    </button>
+		 		</div>
+		 	</div>
+		 	<div class="row" ng-repeat-end>
+		 		<div uib-collapse="collapseStatus" ng-init="0" >
+					<div class="well well-lg">
+						<!-- Press/extend/release url endpoints -->
+						<div class="row" ng-repeat="action in publicEndpointActions(rec.actions)">
+							<div class="col-md-11"><input type="text" class="form-control"  value="{{ actionUrl(rec, action) }}" /></div>
+							<div class="col-md-1"><button type="button" class="btn btn-default"  ng-click="doAction(rec.uuid, action)" width="100%">{{action}}</button></dir>
+						</div>
+					</div>
+				</div>
+		 	</div>
 		</div>
 
 		{% endraw %}
+
+		<div class="row">
+		 	<a class="btn-default btn-lg btn-block btn-info" href="{{ url_for('get_action_log') }}">Get Action log</a>
+		</div>
 	</div>
 </body>
 </html>
