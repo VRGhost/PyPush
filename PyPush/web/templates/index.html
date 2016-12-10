@@ -99,9 +99,9 @@
 							<div class="col-md-11"><input type="text" class="form-control"  value="{{ actionUrl(rec, action) }}" /></div>
 							<div class="col-md-1"><button type="button" class="btn btn-default"  ng-click="doAction(rec.uuid, action)" width="100%">{{action}}</button></dir>
 						</div>
-						<div class="row" ng-if="row.error" >
+						<div class="row" ng-if="rec.error" >
 							<blockquote class="col-md-12"><tt>
-								{{ row.error }}
+								{{ rec.error }}
 							</tt></blockquote>
 						</div>
 					</div>
