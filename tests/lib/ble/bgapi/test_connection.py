@@ -66,7 +66,7 @@ def test_connection_open():
     bleConn.read_by_group_type.assert_called_once()
     assert bleConn.find_information.call_count == len(ALL_SERVICES)
     assert bleConn.get_characteristics.call_count == len(ALL_SERVICES) + 1
-    assert bleConn.read_by_type.call_count == len(ALL_SERVICES) * 3
+    assert bleConn.read_by_type.call_count == len(ALL_SERVICES) * 2
 
     # test internal characteristic memory
     mem = conn._serviceToCharacteristics

@@ -23,8 +23,8 @@ class ActionWriter(object):
         self.service = service
 
 
-    def step(self, session, microbots):
-        """Write pending actions from the databse."""
+    def step(self, session):
+        """Write pending actions from the database."""
         completedActions = []
         chainsToRemove = []
         commandedThisTurn = set()
@@ -166,7 +166,7 @@ class BLEDaemon(object):
 
     def start(self):
         self.running = True
-        self._daemon.start()        
+        self._daemon.start()
 
     def stop(self):
         self.running = False
@@ -184,7 +184,7 @@ class BLEDaemon(object):
                     self.log.exception("Error reconnecting to a microbot.")
 
                 try:
-                    self.actionWriter.step(session, self.service.getBleMicrobots())
+                    self.actionWriter.step(session)
                 except Exception:
                     self.log.exception("Write actions exception.")
                     
