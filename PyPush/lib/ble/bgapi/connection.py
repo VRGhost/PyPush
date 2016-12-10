@@ -258,13 +258,14 @@ class BgConnection(iApi.iConnection):
         assert not self.isActive()
         with self.transaction():
             conn = self._ble.connect(self._mb.getApiTarget(), timeout=10)
-            self._bleConn = self._ble.getChildLock(conn)
-            self._initBleConnection(self._bleConn)
+            conn = self._ble.getChildLock(conn)
+            self._bleConn = self._initBleConnection(conn)
         self._log.info("BgConnection {} opened.".format(self))
 
     def _findCharacteristic(self, serviceUUID, charUUID):
         srv_uuid = self._findService(serviceUUID).uuid
-        for char in self._serviceToCharacteristics[srv_uuid]:
+        conn = self._bleConn
+        for char in self._lazyLoadCharacteristics(conn, srv_uuid):
             if char.human_uuid == charUUID:
                 return char
         # else
@@ -281,57 +282,49 @@ class BgConnection(iApi.iConnection):
 
     def _initBleConnection(self, conn):
         """This method initialises internal state of the BLE connection by populating its internal dictionaries."""
-
-        def _retryOnTimeout(fn, retries=5):
-            while True:
-                retries -= 1
-                try:
-                    return fn()
-                except Timeout:
-                    if retries > 0:
-                        time.sleep(3)
-                        continue
-                    else:
-                        raise
-
         with conn.transaction():
-            _retryOnTimeout(
-                lambda: conn.read_by_group_type(
-                    GATTService.PRIMARY_SERVICE_UUID,
-                    timeout=10))
-            # conn.read_by_group_type(GATTService.SECONDARY_SERVICE_UUID)
+            conn.set_min_connection_interval(0.5) # min 0.5 delay for the conn interval
+            conn.read_by_group_type(
+                    GATTService.PRIMARY_SERVICE_UUID, timeout=10)
 
-            assert not conn.get_characteristics()
-            oldChars = frozenset([])
+        return conn
 
-            for service in conn.get_services():
-                conn.find_information(service, timeout=10)
+    def _lazyLoadCharacteristics(self, connection, serviceUUID):
+        """Load information about a particular service."""
+        try:
+            return self._serviceToCharacteristics[serviceUUID]
+        except KeyError:
+            pass
 
-                for serviceType in (
-                        GATTCharacteristic.CHARACTERISTIC_UUID,
-                        GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
-                        # GATTCharacteristic.USER_DESCRIPTION,
-                ):
-                    try:
-                        _retryOnTimeout(
-                            lambda: conn.read_by_type(
-                                service, serviceType, timeout=10)
-                        )
-                    except RemoteError as err:
-                        if err.code == 0x040A:
-                            # Attribute not found. Seems to be occasional
-                            # occurence with microbots.
-                            pass
-                        else:
-                            raise
+        service = [el for el in connection.get_services() if el.uuid == serviceUUID]
+        if not service:
+            raise Exception("Service {!r} not found".format(serviceUUID))
+        assert len(service) == 1, service
+        service = service[0]
 
-                allChars = conn.get_characteristics()
-                newChars = frozenset(el.handle for el in allChars)
-                self._serviceToCharacteristics[service.uuid] = tuple(
-                    BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))
-                    for ch in allChars if ch.handle in (newChars - oldChars)
-                )
-                oldChars = newChars
+        connection.find_information(service=service)
+        prevHandles = frozenset(el.handle for el in connection.get_characteristics())
+
+        for serviceType in (
+            GATTCharacteristic.CHARACTERISTIC_UUID,
+            GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
+        ):
+            try:
+                connection.read_by_type(service, serviceType, timeout=10)
+            except RemoteError as err:
+                if err.code == 0x040A:
+                    # Attribute not found. Seems to be occasional
+                    # occurence with microbots.
+                    pass
+                else:
+                    raise
+
+        self._serviceToCharacteristics[service.uuid] = rv = tuple(
+            BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))
+            for ch in connection.get_characteristics()
+            if ch.handle not in prevHandles
+        )
+        return rv
 
     def _updateLastCallTime(self):
         """Updates last call time to current time."""

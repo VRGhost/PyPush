@@ -50,7 +50,8 @@ def main(debug, host, port, db_uri, ble_driver, ble_device):
     import PyPush.web as PushWeb
 
     if debug:
-        logging.basicConfig(level=logging.INFO)
+        fmt = '%(asctime)s %(module)-17s line:%(lineno)-4d %(levelname)-8s %(message)s'
+        logging.basicConfig(level=logging.DEBUG, format=fmt)
     else:
         logFile = os.path.join(PushWeb.const.TMP_DIR, "PyPush.log")
         logging.config.dictConfig({
@@ -58,7 +59,7 @@ def main(debug, host, port, db_uri, ble_driver, ble_device):
             'handlers': {
                 'console': {
                     'class': 'logging.StreamHandler',
-                    'level': 'INFO',
+                    'level': 'DEBUG',
                     'formatter': 'detailed',
                     'stream': 'ext://sys.stdout',
                 },
@@ -84,18 +85,24 @@ def main(debug, host, port, db_uri, ble_driver, ble_device):
                 },
             },
             'loggers': {
-                'extensive': {
-                    'level':'DEBUG',
-                    'handlers': ['file',]
-                    },
+                '': {
+                    'level':'DEBUG' if debug else 'INFO',
+                    'handlers': ['file', 'console']
+                },
             },
             })
 
-    app = PushWeb.app.PUSH_APP
+    logging.info("---- Starting PyPush ----")
+    try:
+        app = PushWeb.app.PUSH_APP
 
-    app.flask.config.update({
-        "SQLALCHEMY_DATABASE_URI": db_uri,
-        "DEBUG": debug,
-    })
-    app.setBleConfig(ble_driver, ble_device)
-    app.start(host, port, debug=debug)
+        app.flask.config.update({
+            "SQLALCHEMY_DATABASE_URI": db_uri,
+            "DEBUG": debug,
+        })
+        app.setBleConfig(ble_driver, ble_device)
+        app.start(host, port, debug=debug)
+    except Exception:
+        logging.exception("Top-level exception.")
+        raise
+    

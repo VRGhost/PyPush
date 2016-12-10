@@ -97,9 +97,10 @@
 						<!-- Press/extend/release url endpoints -->
 						<div class="row" ng-repeat="action in publicEndpointActions(rec.actions)">
 							<div class="col-md-11"><input type="text" class="form-control"  value="{{ actionUrl(rec, action) }}" /></div>
-							<div class="col-md-1"><button type="button" class="btn btn-default"  ng-click="doAction(rec.uuid, action)" width="100%">{{action}}</button></dir>
+							<div class="col-md-1"><button type="button" class="btn btn-default"  ng-click="doAction(rec.uuid, action)" width="100%">{{action}}</button></div>
 						</div>
-						<div class="row" ng-if="rec.error" >
+
+						<div class="row" ng-show="rec.error" >
 							<blockquote class="col-md-12"><tt>
 								{{ rec.error }}
 							</tt></blockquote>

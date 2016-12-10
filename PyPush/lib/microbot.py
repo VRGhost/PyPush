@@ -260,6 +260,10 @@ class MicrobotPush(iLib.iMicrobot):
             if msg is not None:
                 # Connection not sucessful
                 conn.close()
+                if self.isPaired():
+                    self._keyDb.delete(uid)
+                    # This changes 'isPaired' status
+                    self._fireChangeState() 
                 raise exceptions.NotPaired(status, msg)
 
             return conn

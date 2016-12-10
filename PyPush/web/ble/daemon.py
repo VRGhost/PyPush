@@ -71,7 +71,6 @@ class ActionWriter(object):
                 action.microbot, cmd, args, kwargs,
             )
 
-            action.microbot.last_error = None
             if actionResult is True:
                 completedActions.append(action)
             elif isinstance(actionResult, (float, int)) and actionResult >= 0:
