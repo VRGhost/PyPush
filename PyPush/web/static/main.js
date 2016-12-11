@@ -1,11 +1,11 @@
 'use strict';
 
 angular.module("PyPushApp", ["ngResource", 'ui.bootstrap', 'ui.bootstrap.tpls', 'xeditable'])
-	.controller("PushList", function($scope, $resource, $timeout, $location){
-		var Microbot = $resource('/api/microbots/:id', {id: '@id'}, {
+	.controller("PushList", function($scope, $resource, $timeout, $location, $browser){
+		var Microbot = $resource($browser.baseHref() + 'api/microbots/:id', {id: '@id'}, {
 		});
 
-		var MicrobotAction = $resource("/api/microbots/:id/:action", {id: "@id", action: "@action"})
+		var MicrobotAction = $resource($browser.baseHref() + "api/microbots/:id/:action", {id: "@id", action: "@action"})
 		
 		$scope.microbots = {};
 		$scope.collapseStatus = {};
@@ -44,8 +44,8 @@ angular.module("PyPushApp", ["ngResource", 'ui.bootstrap', 'ui.bootstrap.tpls', 
 		});
 
 		$scope.actionUrl = (function(mb, action){
-			var url = "/api/microbots/" + mb.id + "/" + action;
-			return $location.protocol() + "://" + $location.host() + ":" + $location.port() + url;
+			var url = "api/microbots/" + mb.id + "/" + action;
+			return $location.protocol() + "://" + $location.host() + ":" + $location.port() + $browser.baseHref() + url;
 		});
 		
 		function mergeBotList(newList)

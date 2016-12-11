@@ -12,6 +12,12 @@ class Timeout(PyPushException):
 class ConnectionError(PyPushException):
     """Generic connection error."""
 
+class RemoteException(ConnectionError):
+    """Remote exception."""
+
+    def __init__(self, code, message):
+        super(RemoteException, self).__init__(message)
+        self.code = code
 
 class NotPaired(ConnectionError):
     """Unable to connect to the microbot due to the pairing issue."""

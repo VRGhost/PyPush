@@ -187,7 +187,11 @@ def ConnectedApi(fn):
         if not self.isConnected():
             raise exceptions.PyPushException(
                 "This API endpoint is callable only when connected.")
-        return fn(self, *args, **kwargs)
+        try:
+            return fn(self, *args, **kwargs)
+        except bleExceptions.RemoteException as err:
+            self.log.exception("BLE remote exception")
+            raise exceptions.RemoteException(err.code, err.message)
 
     return _wrapper_
 

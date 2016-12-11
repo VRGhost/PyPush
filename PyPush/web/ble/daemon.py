@@ -107,20 +107,26 @@ class ActionWriter(object):
 
 
 
-        if cmd == MB_ACTIONS.pair.key:
-            for colour in mb.pair():
-                print colour
-        elif cmd == MB_ACTIONS.blink.key:
-            mb.deviceBlink(30)
-        elif cmd == MB_ACTIONS.extend.key:
-            mb.extend()
-        elif cmd == MB_ACTIONS.retract.key:
-            mb.retract()
-        elif cmd == MB_ACTIONS.calibrate.key:
-            assert len(args) == 1, (args, kwargs)
-            mb.setCalibration(args[0])
-        else:
-            raise Exception([cmd, args, kwargs])
+        try:
+            if cmd == MB_ACTIONS.pair.key:
+                for colour in mb.pair():
+                    print colour
+            elif cmd == MB_ACTIONS.blink.key:
+                mb.deviceBlink(30)
+            elif cmd == MB_ACTIONS.extend.key:
+                mb.extend()
+            elif cmd == MB_ACTIONS.retract.key:
+                mb.retract()
+            elif cmd == MB_ACTIONS.calibrate.key:
+                assert len(args) == 1, (args, kwargs)
+                mb.setCalibration(args[0])
+            else:
+                raise Exception([cmd, args, kwargs])
+        except Lib.exceptions.RemoteException as err:
+            if err.code == 0x0181:
+                # device in wrong state
+                mb.disconnect()
+            raise
 
         return True  # Success
 

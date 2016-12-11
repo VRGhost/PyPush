@@ -3,8 +3,10 @@
 <head>
 	<meta charset="UTF-8">
 	<meta http-equiv="pragma" content="no-cache">
+	<base href="{{ url_for('index', _external=True) }}" />
 
 	<title>PyPush</title>
+	
 
 	<script src="{{ url_for('bower.static', filename='angular/angular.min.js') }}"></script>
 	<script src="{{ url_for('bower.static', filename='angular-resource/angular-resource.min.js') }}"></script>
