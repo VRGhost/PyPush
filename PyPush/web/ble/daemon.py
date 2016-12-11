@@ -138,10 +138,13 @@ class ActionWriter(object):
                 mb.setCalibration(args[0])
             else:
                 raise Exception([cmd, args, kwargs])
-        except Lib.exceptions.RemoteException as err:
+        except Lib.exceptions.RemoteException:
             if err.code == 0x0181:
                 # device in wrong state
                 mb.disconnect()
+            raise
+        except Lib.exceptions.IOError:
+            mb.disconnect()
             raise
 
         return True  # Success

@@ -9,6 +9,8 @@ import itertools
 import struct
 import Queue
 import functools
+import threading
+import contextlib
 
 from . import (
     iLib,
@@ -20,6 +22,9 @@ from . import (
 from .ble import exceptions as bleExceptions
 
 LedStatus = collections.namedtuple("LedStatus", ["r", "g", "b"])
+
+class StateChangeError(exceptions.Timeout):
+    """This exception is raised when microbot's state is not as expected."""
 
 
 class _SubscribedReader(object):
@@ -39,6 +44,7 @@ class _SubscribedReader(object):
         self._unsupportedValues = {}  # key -> (value, expire_time)
         # List of all read() addresses that do not support notify.
         self._unsupported = set()
+        self.callbacks = async.SubscribeHubDict()
 
     def clear(self):
         """Forgets all notify subscriptions.
@@ -46,6 +52,8 @@ class _SubscribedReader(object):
         Does not forget list of endpoints not supporting notify
         as this won't change on the connection restore.
         """
+        for handle in self._handles.itervalues():
+            handle.cancel()
         self._handles.clear()
         self._values.clear()
 
@@ -60,17 +68,22 @@ class _SubscribedReader(object):
         try:
             if key in self._unsupported:
                 rv = self._readUnsupported(conn, service, char)
-            elif key in self._handles:
-                rv = self._values[key]
             else:
-                # Not cached yet
-                rv = conn.read(service, char, timeout=15)
                 try:
-                    self._subscribe(conn, service, char)
-                except bleExceptions.NotSupported:
-                    self._unsupported.add(key)
-                else:
-                    self._values[key] = rv
+                    rv = self._values[key]
+                except KeyError:
+                    try:
+                        self._handles.pop(key).cancel()
+                    except KeyError:
+                        pass
+                    # Not cached yet
+                    rv = conn.read(service, char, timeout=15)
+                    try:
+                        self._subscribe(conn, service, char)
+                    except bleExceptions.NotSupported:
+                        self._unsupported.add(key)
+                    else:
+                        self._values[key] = rv
         except bleExceptions.Timeout:
             self.log.exception("BLE timeout")
             raise exceptions.Timeout("Read timeout")
@@ -119,9 +132,13 @@ class _SubscribedReader(object):
                 service, char, lambda data: self._onNotify(key, data))
 
     def _onNotify(self, key, data):
-        if data != self._values[key]:
+        if data != self._values.get(key):
             self._values[key] = data
-            self.mb._fireChangeState()
+            self._fireChangeEvents(key)
+
+    def _fireChangeEvents(self, key):
+        self.callbacks[key].fireSubscribers(key)
+        self.mb._fireChangeState()
 
 
 class _StableAuthorisedConnection(object):
@@ -378,19 +395,47 @@ class MicrobotPush(iLib.iMicrobot):
 
     @ConnectedApi
     def extend(self):
-        self.log.info("Extending the pusher.")
-        self._conn().write(
-            const.PushServiceId, "2A11",
-            '\x01'
-        )
+        """Extend the pusher."""
+        if not self.isRetracted():
+            self.log.info("The pusher is already extended.")
+            return
+
+        with self._mutex:
+            self.log.info("Extending the pusher.")
+            try:
+                with self._waitForRegisterStateChange(const.PushServiceId, const.DeviceStatus):
+                    self._conn().write(
+                        const.PushServiceId, "2A11",
+                        '\x01'
+                    )
+            except StateChangeError:
+                raise exceptions.IOError("Sending retract command did not affect state of the device.")
+                
+            if self.isRetracted():
+                raise exceptions.IOError("Device is not retracted although the retract command had been sent.")
 
     @ConnectedApi
     def retract(self):
-        self.log.info("Retracting the pusher.")
-        self._conn().write(
-            const.PushServiceId, "2A12",
-            '\x01'
-        )
+        """Retract the pusher."""
+
+        if self.isRetracted():
+            self.log.info("The pusher is already retracted")
+            return
+
+        with self._mutex:
+            self.log.info("Retracting the pusher.")
+            try:
+                with self._waitForRegisterStateChange(const.PushServiceId, const.DeviceStatus):
+                    self._conn().write(
+                        const.PushServiceId, "2A12",
+                        '\x01'
+                    )
+            except StateChangeError:
+                raise exceptions.IOError("Sending retract command did not affect state of the device.")
+
+            if not self.isRetracted():
+                raise exceptions.IOError("Device is not retracted although the retract command had been sent.")
+
 
     @ConnectedApi
     def isRetracted(self):
@@ -473,6 +518,17 @@ class MicrobotPush(iLib.iMicrobot):
 
     def isPaired(self):
         return self._keyDb.hasKey(self.getUID())
+
+    @contextlib.contextmanager
+    def _waitForRegisterStateChange(self, service, characteristics, timeout=10):
+        evt = threading.Event()
+        key = (service, characteristics)
+        handle = self._reader.callbacks[key].subscribe(lambda *a, **k: evt.set())
+        yield
+        evtSet = evt.wait(timeout)
+        handle.cancel()
+        if not evtSet:
+            raise StateChangeError("State change did not arrive")
 
     def _fireChangeState(self):
         self._onChangeCbs.fireSubscribers(self)

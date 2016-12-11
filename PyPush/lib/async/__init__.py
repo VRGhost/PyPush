@@ -3,4 +3,4 @@
 Generic callbacks, callback hubs and such.
 """
 
-from .subscribe import SubscribeHub, MultiHandle
+from .subscribe import SubscribeHub, MultiHandle, SubscribeHubDict

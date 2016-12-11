@@ -12,6 +12,9 @@ class Timeout(PyPushException):
 class ConnectionError(PyPushException):
     """Generic connection error."""
 
+class IOError(ConnectionError):
+    """An Input/Output error with the microbot occured."""
+
 class WrongConnectionState(ConnectionError):
     """Not connected to the destination when has to be, disconnected when hasn't."""
 

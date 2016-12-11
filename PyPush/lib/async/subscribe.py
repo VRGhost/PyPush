@@ -2,7 +2,8 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 
 import logging
-from threading import RLock
+import threading
+import Queue
 
 
 class iHandle(object):
@@ -47,7 +48,7 @@ class SubscribeHub(object):
 
     def __init__(self):
         self._callbacks = []
-        self._mutex = RLock()
+        self._mutex = threading.RLock()
 
     def subscribe(self, callback):
         assert callable(callback), callback
@@ -83,3 +84,23 @@ class SubscribeHub(object):
                 pass
 
         self.onUnsubscribe(handle)
+
+class SubscribeHubDict(object):
+    """A dict-like object that manages multiple subscriber hubs at once."""
+
+    def __init__(self):
+        self.mutex = threading.RLock()
+        self.subscriberHubs = {}
+
+    def __getitem__(self, key):
+        """Return SubscriberHub."""
+        with self.mutex:
+            try:
+                return self.subscriberHubs[key]
+            except KeyError:
+                rv = self._makeSubscriberHub(key)
+                self.subscriberHubs[key] = rv
+                return rv
+
+    def _makeSubscriberHub(self, key):
+        return SubscribeHub()

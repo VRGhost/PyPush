@@ -107,14 +107,12 @@ class _ConnNotify(async.SubscribeHub):
         self.hub.conn._updateLastCallTime()
 
 
-class _ConnNotifyHub(object):
+class _ConnNotifyHub(async.SubscribeHubDict):
 
     def __init__(self, conn):
+        super(_ConnNotifyHub, self).__init__()
         self.conn = conn
-        self.subscriberHubs = {}
-        self._mutex = threading.RLock()
         self.bgapiQueue = Queue.Queue()
-
         self.apiThread = threading.Thread(
             name="{}.thread".format(__name__),
             target=self._hubThreadTarget,
@@ -123,15 +121,9 @@ class _ConnNotifyHub(object):
         self.apiThread.daemon = True
         self.apiThread.start()
 
-    def addCallback(self, characteristic, cb):
-        key = characteristic.uuid
-        with self._mutex:
-            try:
-                subs = self.subscriberHubs[key]
-            except KeyError:
-                subs = _ConnNotify(self, characteristic)
-                self.subscriberHubs[key] = subs
-        return subs.subscribe(cb)
+    def _makeSubscriberHub(self, (serviceId, characteristicId)):
+        char = self.conn._findCharacteristic(serviceId, characteristicId)
+        return _ConnNotify(self, char)
 
     def _hubThreadTarget(self, bgapiQueue):
         log = logging.getLogger("_ConnNotifyHub.thread")
@@ -221,7 +213,7 @@ class BgConnection(iApi.iConnection):
         if not char.gatt.has_notify():
             raise exceptions.NotSupported("Notify is not supported.")
 
-        return self._notifyHub.addCallback(char, callback)
+        return self._notifyHub[(serviceId, characteristicId)].subscribe(callback)
 
     @ActiveApi
     def write(self, serviceId, characteristicId, data):
