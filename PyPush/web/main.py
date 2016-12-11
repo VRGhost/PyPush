@@ -32,6 +32,11 @@ def get_arg_parser():
         "--host",
         default="localhost",
         help="Host to bind server socket to.")
+    parser.add_argument(
+        "--application_root",
+        default=None,
+        help="Application root url."
+    )
     parser.add_argument("--db_uri", default=DB_URI, help="Database URI")
     parser.add_argument(
         "--ble_driver",
@@ -44,9 +49,9 @@ def get_arg_parser():
     return parser
 
 
-def main(debug, host, port, db_uri, ble_driver, ble_device):
+def main(debug, host, port, app_root, db_uri, ble_driver, ble_device):
     """Main entrypoint into the program."""
-    
+    print app_root
     import PyPush.web as PushWeb
 
     if debug:
@@ -98,6 +103,7 @@ def main(debug, host, port, db_uri, ble_driver, ble_device):
 
         app.flask.config.update({
             "SQLALCHEMY_DATABASE_URI": db_uri,
+            "APPLICATION_ROOT": app_root,
             "DEBUG": debug,
         })
         app.setBleConfig(ble_driver, ble_device)

@@ -14,7 +14,7 @@ if __name__ == "__main__":
     
     PushWeb.main.main(
         args.debug,
-        args.host, args.port,
+        args.host, args.port, args.application_root or None,
         args.db_uri,
         args.ble_driver, ble_device
     )

@@ -15,4 +15,4 @@ docker push vrghost/pypush
 
 # Run with
 # docker pull vrghost/pypush
-#  docker run --privileged=true -e DEVICE='/dev/ttyACM*' -e PORT='59730' -p '59730:59730' -d --name pypush vrghost/pypush
+#  docker run --privileged=true -e DEVICE='/dev/ttyACM*' -e PORT='59730' -e APPLICATION_ROOT='/microbots' -p '59730:59730' -d --name pypush vrghost/pypush

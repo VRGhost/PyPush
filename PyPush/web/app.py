@@ -7,6 +7,8 @@ from flask_bower import Bower
 from flask_sqlalchemy import SQLAlchemy
 from flask_restful import Api
 
+from werkzeug.wsgi import DispatcherMiddleware
+
 from . import (
     const,
     db,
@@ -64,6 +66,16 @@ class PyPushApp(object):
 
         if os.environ.get("WERKZEUG_RUN_MAIN") == "true" or not self.flask.debug:
             self.ble.start(*self._bleConfig)
+
+        app_root = self.flask.config.get("APPLICATION_ROOT")
+        if app_root:
+            def simple(env, resp):
+                resp(b'200 OK', [(b'Content-Type', b'text/html')])
+                return [b'<a href="{root}">{root}</a>'.format(root=app_root)]
+            print self.flask.config["APPLICATION_ROOT"]
+            self.flask.wsgi_app = DispatcherMiddleware(simple, {
+                self.flask.config["APPLICATION_ROOT"]: self.flask.wsgi_app
+            })
 
         self.flask.run(
             host=host, port=port,
