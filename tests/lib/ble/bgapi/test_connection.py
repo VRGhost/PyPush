@@ -3,6 +3,8 @@ import time
 import mock
 import pytest
 
+import Queue
+
 from bgapi.module import RemoteError as bgRemoteError
 
 from PyPush.lib.ble.exceptions import RemoteException
@@ -139,6 +141,7 @@ def get_mocked_connection():
 
 
 @mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
 def test_ok_write():
     conn = get_mocked_connection()
     conn["char"].is_writable.return_value = True
@@ -154,13 +157,14 @@ def test_ok_write():
 
 
 @mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
 def test_ok_read():
     conn = get_mocked_connection()
     conn["char"].is_writable.return_value = True
     conn["connection"]._open()
     conn["connection"].read("SERV", "CHAR")
     conn["bleConnection"].read_by_handle.assert_called_once_with(
-        11, timeout=5)
+        11, timeout=15)
 
     conn["bleConnection"].reset_mock()
     conn["connection"].read("SERV", "CHAR", -42)
@@ -191,33 +195,37 @@ def test_fail_read():
     with pytest.raises(RemoteException):
         conn["connection"].read("SERV", "CHAR")
     assert conn[
-        "bleConnection"].read_by_handle.call_count == 1, "Read operation does not retry"
+        "bleConnection"].read_by_handle.call_count == 5, "Read operation retries 5 times by default"
 
 
 @mock.patch(STR_TO_HEX, noop1)
+@mock.patch("time.sleep", noop1)
 def test_on_notify():
-    callFn = mock.MagicMock()
+
+    cbQ = Queue.Queue()
+
     handle = get_mocked_connection()
     conn = handle["connection"]
     ble = handle["bleConnection"]
     ble.get_handles_by_uuid.return_value = (42, )
 
     conn._open()
-    cb = conn.onNotify("SERV", "CHAR", callFn)
+    cb = conn.onNotify("SERV", "CHAR", cbQ.put)
 
     ble.characteristic_subscription.assert_called_once()
     ble.assign_attrclient_value_callback.assert_called_once()
     (_bleH, _cbHandle) = ble.assign_attrclient_value_callback.call_args[0]
 
+    print _cbHandle
     _cbHandle("BLE DATA PASSED")
-    time.sleep(0.2) # Give internal thread a chance to work
-    callFn.assert_called_once_with("BLE DATA PASSED")
+    data = cbQ.get(timeout=10)
+    assert data == "BLE DATA PASSED"
 
-    callFn.reset_mock()
     cb.cancel()
 
     _cbHandle("TEST 2")
-    assert callFn.call_count == 0, "Subscription was cancelled."
+    with pytest.raises(Queue.Empty):
+        cbQ.get(timeout=5) # Subscription was cancelled
 
 
 @mock.patch(STR_TO_HEX, noop1)
