@@ -39,6 +39,7 @@ class ActionChainConstructor(object):
             microbot_id=self._microbot.id,
             action=action,
             action_args=(args, kwargs or {}),
+            retries_left=5 * 3, # the microbot will be disconnected every 5 retries.
         )
         if self._actions:
             rec.prev_action = self._actions[-1]
@@ -56,9 +57,10 @@ class ActionChainConstructor(object):
         if not self._actions:
             return ()
 
-        s = PUSH_APP.db.session
-        s.add_all(self._actions)
-        s.commit()
+        with PUSH_APP.db_lock:
+            s = PUSH_APP.db.session
+            s.add_all(self._actions)
+            s.commit()
         rv = [rec.id for rec in self._actions]
         PUSH_APP.ble.syncToBt()
         self.clear()

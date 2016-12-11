@@ -140,15 +140,16 @@ class MicrobotBluetoothService(object):
 
     @contextlib.contextmanager
     def sessionCtx(self):
-        with self.app.flask.app_context():
-            session = self.app.db.create_scoped_session({})
-            try:
+        with self.app.db_lock:
+            with self.app.flask.app_context():
+                session = self.app.db.create_scoped_session({})
                 try:
-                    yield session
-                except:
-                    session.rollback()
-                    raise
-                else:
-                    session.commit()
-            finally:
-                session.close()
+                    try:
+                        yield session
+                    except:
+                        session.rollback()
+                        raise
+                    else:
+                        session.commit()
+                finally:
+                    session.close()

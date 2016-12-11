@@ -25,6 +25,6 @@ class RemoteException(ConnectionError):
 class NotPaired(ConnectionError):
     """Unable to connect to the microbot due to the pairing issue."""
 
-    def __init__(self, status, message):
-        super(NotPaired, self).__init__(message)
-        self.status = status
+    def __init__(self, code, message):
+        super(NotPaired, self).__init__("{} ({:02X})".format(message, code))
+        self.code = code

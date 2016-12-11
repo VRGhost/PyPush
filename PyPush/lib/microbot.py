@@ -134,6 +134,7 @@ class _StableAuthorisedConnection(object):
     """
 
     _active = True
+    log = logging.getLogger(__name__)
 
     def __init__(self, microbot, bleConnection, retries=5):
         self._mb = microbot
@@ -148,11 +149,15 @@ class _StableAuthorisedConnection(object):
             raise exceptions.ConnectionError("Connection closed.")
 
         with self._mutex:
-            while not self._conn.isActive() and retry < self._maxRetries:
-                self._restoreConnection()
-                # Sleep for a bit to give the device time to recover
-                time.sleep(retry)
-                retry += 1
+            try:
+                while not self._conn.isActive() and retry < self._maxRetries:
+                    self._restoreConnection()
+                    # Sleep for a bit to give the device time to recover
+                    time.sleep(retry)
+                    retry += 1
+            except Exception:
+                self.log.exception("Error restoring BLE connection")
+                self._active = False
 
             if not self._conn.isActive():
                 # Exceeded retry count
@@ -227,8 +232,11 @@ class MicrobotPush(iLib.iMicrobot):
     @NotConnectedApi
     def connect(self):
         with self._mutex:
-            self._stableConn = _StableAuthorisedConnection(
-                self, self._sneakyConnect())
+            if self.isPaired():
+                self._stableConn = _StableAuthorisedConnection(
+                    self, self._sneakyConnect())
+            else:
+                raise exceptions.NotPaired(0xFE, "This connection is not paired.")
         self._fireChangeState()
 
     def _sneakyConnect(self):
@@ -495,7 +503,7 @@ class MicrobotPush(iLib.iMicrobot):
                 self.log.info(
                     "Failed to check status of {!r}".format(
                         self._bleMb))
-                return ord("\xff")
+                return 0xFF
             finally:
                 handle.cancel()
 

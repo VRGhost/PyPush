@@ -18,6 +18,7 @@ import PyPush.lib as Lib
 class ActionWriter(object):
     """Object that relays delayed actions from the database to the microbots."""
     log = logging.getLogger(__name__)
+    DISCONNECT_EVERY_X_RETRIES = 5 # How many retries should be attempted before the connection is cycled
 
     def __init__(self, service):
         self.service = service
@@ -61,20 +62,31 @@ class ActionWriter(object):
                 self.log.exception("Error calling action")
                 tb = traceback.format_exc()
                 self.log.error(tb)
-                action.retries_left -= 1
                 action.microbot.last_error = tb
-                if action.retries_left <= 0:
-                    # No more retries remain, remove the action & its children.
-                    chainsToRemove.append(action)
-                continue
-
+                actionResult = 60 # Retry in 1 minute
+                
             self.service.app.microbotActionLog.logOrderCompleted(
                 action.microbot, cmd, args, kwargs,
             )
 
             if actionResult is True:
                 completedActions.append(action)
-            elif isinstance(actionResult, (float, int)) and actionResult >= 0:
+            elif isinstance(actionResult, (float, int)):
+                # Retry in X seconds
+                action.retries_left -= 1
+                if action.retries_left <= 0:
+                    # No more retries remain, remove the action & its children.
+                    chainsToRemove.append(action)
+                elif action.retries_left % self.DISCONNECT_EVERY_X_RETRIES == 0:
+                    try:
+                        mb = self.service.getMicrobot(uuid)
+                    except KeyError:
+                        pass
+                    else:
+                        if mb.isConnected():
+                            mb.disconnect()
+                
+                actionResult = max(1, actionResult)
                 self.log.info(
                     "Action {!r} re-scheduled for {} seconds".format(cmd, actionResult))
                 action.scheduled_at = delayedBy(actionResult)
@@ -147,7 +159,7 @@ class MicrobotReconnector(object):
     def step(self):
         """Reconnect all previously disconnected microbots."""
         for mb in self.service.getBleMicrobots():
-            if not mb.isConnected() and mb.isPaired():
+            if (not mb.isConnected()) and mb.isPaired():
                 uid = mb.getUID()
                 if self.minReconnectTime[uid] < time.time():
                     self.log.info("Connecting to {!r}".format(uid))

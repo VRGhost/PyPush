@@ -1,7 +1,7 @@
 FROM python:2.7
 
 ENV PORT=5000
-ENV DEVICE="/dev/tty.usbmodem1"
+ENV DEVICE="/dev/ttyACM*"
 ENV APPLICATION_ROOT=""
 
 RUN mkdir -p /usr/src

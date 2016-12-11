@@ -1,6 +1,7 @@
 """Flask app."""
 
 import os
+import threading
 
 from flask import Flask
 from flask_bower import Bower
@@ -19,7 +20,7 @@ from . import (
 class PyPushApp(object):
     """PyPush integration app object."""
 
-    __slots__ = ("flask", "db", "bower", "ble", "restful", "_bleConfig", "microbotActionLog")
+    __slots__ = ("flask", "db", "db_lock", "bower", "ble", "restful", "_bleConfig", "microbotActionLog")
 
     def __init__(self):
         self.flask = Flask("PyPush.web",
@@ -37,6 +38,7 @@ class PyPushApp(object):
         self.restful = Api(self.flask)
         self.bower = Bower(self.flask)
         self.db = db.db
+        self.db_lock = threading.RLock()
 
         from .ble import MicrobotBluetoothService
         self.ble = MicrobotBluetoothService(self)
