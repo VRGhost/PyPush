@@ -31,11 +31,13 @@ def test_connection_open():
         "idx": 0
     }
 
+
+
     def _genNewChars():
         CHAR_MEMORY["idx"] += 1
-        if CHAR_MEMORY["idx"] == 1:
-            # Ignore the first call
-            return
+        if CHAR_MEMORY["idx"] % 2 == 1:
+            # Ignore odd calls
+            return tuple(CHAR_MEMORY["ch"])
 
         # each sucessive call generates one more char than the previous one
         start_idx = len(CHAR_MEMORY["ch"])
@@ -69,11 +71,11 @@ def test_connection_open():
     assert bleConn.find_information.call_count == 0, "Lazy load"
     conn._findCharacteristic("SER_1", "CHAR:0")
     conn._findCharacteristic("SER_2", "CHAR:1")
-    conn._findCharacteristic("SER_2", "CHAR:3")
+    conn._findCharacteristic("SER_3", "CHAR:3")
 
 
     assert bleConn.find_information.call_count == len(ALL_SERVICES)
-    assert bleConn.get_characteristics.call_count == len(ALL_SERVICES) + 1
+    assert bleConn.get_characteristics.call_count == len(ALL_SERVICES) * 2
     assert bleConn.read_by_type.call_count == len(ALL_SERVICES) * 2
 
     # test internal characteristic memory
