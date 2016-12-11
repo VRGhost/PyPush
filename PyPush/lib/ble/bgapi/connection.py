@@ -293,7 +293,7 @@ class BgConnection(iApi.iConnection):
         with conn.transaction():
             conn.set_min_connection_interval(0.5) # min 0.5 delay for the conn interval
             conn.read_by_group_type(
-                    GATTService.PRIMARY_SERVICE_UUID, timeout=10)
+                    GATTService.PRIMARY_SERVICE_UUID, timeout=20)
 
         return conn
 
