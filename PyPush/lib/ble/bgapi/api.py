@@ -24,6 +24,8 @@ class API(iApi.iApi):
         )
         self._ble = libLock.LockableBle.RootLock(_ble)
         self._ble.reset_ble_state()
+        # set maximum allowed txpower for BLED112 (https://www.silabs.com/Support%20Documents/RegisteredDocs/Bluetooth_Smart_Software-BLE-1.3-API-RM.pdf page 145)
+        _ble._api.ble_cmd_hardware_set_txpower(15)
         self._scanner = scanner.Scanner(
             self._ble, self._microbotDb.onScanEvent)
 

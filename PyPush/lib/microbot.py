@@ -208,7 +208,6 @@ def NotConnectedApi(fn):
 
     return _wrapper_
 
-
 class MicrobotPush(iLib.iMicrobot):
 
     log = logging.getLogger(__name__)

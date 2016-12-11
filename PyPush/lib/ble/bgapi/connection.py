@@ -156,8 +156,10 @@ def ActiveApi(func):
         try:
             return func(self, *args, **kwargs)
         except RemoteError as err:
+            self._log.exception("Remote BLE exception")
             raise exceptions.RemoteException(err.code, err.message)
         except Timeout as err:
+            self._log.exception("Remote BLE timeout")
             raise exceptions.Timeout(str(err))
         else:
             self._updateLastCallTime()
@@ -237,12 +239,17 @@ class BgConnection(iApi.iConnection):
         )
 
     @ActiveApi
-    def read(self, serviceId, characteristicId, timeout=5):
+    def read(self, serviceId, characteristicId, timeout=15):
         char = self._findCharacteristic(serviceId, characteristicId)
         if not char.gatt.is_readable():
             raise exceptions.NotSupported("Read is not supported.")
 
-        self._bleConn.read_by_handle(char.gatt.handle + 1, timeout=timeout)
+        retry_call_if_fails(
+            self._bleConn,
+            lambda: self._bleConn.read_by_handle(char.gatt.handle + 1, timeout=timeout),
+            attempts=5, retry_on_remote_err=(0x0181, ),
+            retry_on_timeout=True
+        )
         return char.gatt.value
 
     @contextlib.contextmanager
@@ -302,7 +309,7 @@ class BgConnection(iApi.iConnection):
         assert len(service) == 1, service
         service = service[0]
 
-        connection.find_information(service=service)
+        connection.find_information(service=service, timeout=20)
         prevHandles = frozenset(el.handle for el in connection.get_characteristics())
 
         for serviceType in (
@@ -310,7 +317,7 @@ class BgConnection(iApi.iConnection):
             GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
         ):
             try:
-                connection.read_by_type(service, serviceType, timeout=10)
+                connection.read_by_type(service, serviceType, timeout=20)
             except RemoteError as err:
                 if err.code == 0x040A:
                     # Attribute not found. Seems to be occasional
