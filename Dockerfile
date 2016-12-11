@@ -2,7 +2,7 @@ FROM python:2.7
 
 ENV PORT=5000
 ENV DEVICE="/dev/ttyACM*"
-ENV APPLICATION_ROOT=""
+ENV APPLICATION_ROOT="/microbots"
 
 RUN mkdir -p /usr/src
 COPY ./ /usr/src/PyPush
