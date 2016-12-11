@@ -12,6 +12,9 @@ class Timeout(PyPushException):
 class ConnectionError(PyPushException):
     """Generic connection error."""
 
+class WrongConnectionState(ConnectionError):
+    """Not connected to the destination when has to be, disconnected when hasn't."""
+
 class RemoteException(ConnectionError):
     """Remote exception."""
 

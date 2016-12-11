@@ -185,7 +185,7 @@ def ConnectedApi(fn):
     @functools.wraps(fn)
     def _wrapper_(self, *args, **kwargs):
         if not self.isConnected():
-            raise exceptions.PyPushException(
+            raise exceptions.WrongConnectionState(
                 "This API endpoint is callable only when connected.")
         try:
             return fn(self, *args, **kwargs)
@@ -202,7 +202,7 @@ def NotConnectedApi(fn):
     @functools.wraps(fn)
     def _wrapper_(self, *args, **kwargs):
         if self.isConnected():
-            raise exceptions.PyPushException(
+            raise exceptions.WrongConnectionState(
                 "This API endpoint is callable only when disconnected.")
         return fn(self, *args, **kwargs)
 

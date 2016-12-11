@@ -2,8 +2,9 @@
 
 import argparse
 import os
+import sys
 import logging
-import logging.config
+import logging.handlers
 
 
 def get_arg_parser():
@@ -48,55 +49,37 @@ def get_arg_parser():
         help="BLE device")
     return parser
 
+def setupLogging(debug):
+    """Configure the logging subsystem."""
+    import PyPush.web as PushWeb
+
+    lvl = logging.DEBUG if debug else logging.INFO
+
+    formatter = logging.Formatter('%(asctime)s %(module)-17s line:%(lineno)-4d %(levelname)-8s %(message)s')
+    
+    rotHandler = logging.handlers.RotatingFileHandler(
+        os.path.join(PushWeb.const.TMP_DIR, "PyPush.log"),
+        maxBytes=10485760,
+        backupCount=5,
+    )
+    rotHandler.setFormatter(formatter)
+
+    stdoutHandler = logging.StreamHandler(sys.stdout)
+    stdoutHandler.setFormatter(formatter)
+
+    root_logger = logging.getLogger()
+    root_logger.setLevel(lvl)
+    root_logger.addHandler(rotHandler)
+    root_logger.addHandler(stdoutHandler)
+
+
+l = logging.getLogger("asdasd")
 
 def main(debug, host, port, app_root, db_uri, ble_driver, ble_device):
     """Main entrypoint into the program."""
-    print app_root
     import PyPush.web as PushWeb
-
-    if debug:
-        fmt = '%(asctime)s %(module)-17s line:%(lineno)-4d %(levelname)-8s %(message)s'
-        logging.basicConfig(level=logging.DEBUG, format=fmt)
-    else:
-        logFile = os.path.join(PushWeb.const.TMP_DIR, "PyPush.log")
-        logging.config.dictConfig({
-            'version': 1,
-            'handlers': {
-                'console': {
-                    'class': 'logging.StreamHandler',
-                    'level': 'DEBUG',
-                    'formatter': 'detailed',
-                    'stream': 'ext://sys.stdout',
-                },
-                'file': {
-                    'class': 'logging.handlers.RotatingFileHandler',
-                    'level': 'DEBUG',
-                    'formatter': 'detailed',
-                    'filename': logFile,
-                    'mode': 'a',
-                    'maxBytes': 10485760,
-                    'backupCount': 5,
-                },
-
-            },
-            'formatters': {
-                'detailed': {
-                    'format': '%(asctime)s %(module)-17s line:%(lineno)-4d ' \
-                    '%(levelname)-8s %(message)s',
-                },
-                'email': {
-                    'format': 'Timestamp: %(asctime)s\nModule: %(module)s\n' \
-                    'Line: %(lineno)d\nMessage: %(message)s',
-                },
-            },
-            'loggers': {
-                '': {
-                    'level':'DEBUG' if debug else 'INFO',
-                    'handlers': ['file', 'console']
-                },
-            },
-            })
-
+    setupLogging(debug)
+    
     logging.info("---- Starting PyPush ----")
     try:
         app = PushWeb.app.PUSH_APP

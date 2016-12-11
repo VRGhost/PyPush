@@ -105,7 +105,8 @@ class ActionWriter(object):
             self.log.info("Microbot {!r} not found".format(uuid))
             return 30  # Retry in 30 seconds
 
-
+        if not mb.isConnected():
+            return 60 # Retry in 1 minute if not connected
 
         try:
             if cmd == MB_ACTIONS.pair.key:
