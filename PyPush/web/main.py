@@ -39,7 +39,7 @@ def get_arg_parser():
         help="Bluetooth Low Energy driver.")
     parser.add_argument(
         "--ble_device",
-        default="/dev/tty.usbmodem1",
+        default="/dev/tty.usbmodem*",
         help="BLE device")
     return parser
 

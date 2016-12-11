@@ -29,6 +29,7 @@ class _SubscribedReader(object):
     actually issued.
     """
 
+    log = logging.getLogger()
     UNSUPPORTED_REFRESH_FREQ = 5 * 60  # seconds
 
     def __init__(self, mb):
@@ -63,7 +64,7 @@ class _SubscribedReader(object):
                 rv = self._values[key]
             else:
                 # Not cached yet
-                rv = conn.read(service, char)
+                rv = conn.read(service, char, timeout=15)
                 try:
                     self._subscribe(conn, service, char)
                 except bleExceptions.NotSupported:
@@ -71,6 +72,7 @@ class _SubscribedReader(object):
                 else:
                     self._values[key] = rv
         except bleExceptions.Timeout:
+            self.log.exception("BLE timeout")
             raise exceptions.Timeout("Read timeout")
         return rv
 

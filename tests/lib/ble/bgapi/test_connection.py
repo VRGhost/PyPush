@@ -59,11 +59,19 @@ def test_connection_open():
     conn = ConMod.BgConnection(mb, ble)
     conn._open()
 
+
     mb.getApiTarget.assert_called_once()
     ble.connect.assert_called_once_with(mb.getApiTarget(), timeout=10)
     ble.getChildLock.assert_called_once_with(ble.connect.return_value)
 
     bleConn.read_by_group_type.assert_called_once()
+
+    assert bleConn.find_information.call_count == 0, "Lazy load"
+    conn._findCharacteristic("SER_1", "CHAR:0")
+    conn._findCharacteristic("SER_2", "CHAR:1")
+    conn._findCharacteristic("SER_2", "CHAR:3")
+
+
     assert bleConn.find_information.call_count == len(ALL_SERVICES)
     assert bleConn.get_characteristics.call_count == len(ALL_SERVICES) + 1
     assert bleConn.read_by_type.call_count == len(ALL_SERVICES) * 2

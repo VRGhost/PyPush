@@ -87,7 +87,7 @@ class _ConnNotify(async.SubscribeHub):
                     conn,
                     lambda: conn.characteristic_subscription(
                         self.characteristic.gatt, indicate=False,
-                        notify=True, timeout=10
+                        notify=True, timeout=15
                     ),
                     attempts=5, retry_on_remote_err=(0x0181, ), retry_on_timeout=True
                 )

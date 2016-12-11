@@ -54,6 +54,7 @@ class ActionWriter(object):
                 args = ()
                 kwargs = {}
 
+            action.microbot.last_error = None
             try:
                 actionResult = self._callAction(uuid, cmd, args, kwargs)
             except:
