@@ -137,7 +137,6 @@ class _ConnNotifyHub(object):
         log = logging.getLogger("_ConnNotifyHub.thread")
         while True:
             (handler, data) = bgapiQueue.get()
-            print "FOUND"
             try:
                 handler.fireSubscribers(data)
             except Exception:
