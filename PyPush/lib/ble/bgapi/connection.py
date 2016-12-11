@@ -319,6 +319,8 @@ class BgConnection(iApi.iConnection):
                 else:
                     raise
 
+        time.sleep(2) # Give microbot time to cool down a bit
+
         self._serviceToCharacteristics[service.uuid] = rv = tuple(
             BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))
             for ch in connection.get_characteristics()

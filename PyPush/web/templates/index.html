@@ -3,7 +3,7 @@
 <head>
 	<meta charset="UTF-8">
 	<meta http-equiv="pragma" content="no-cache">
-	<base href="{{ config.get('APPLICATION_ROOT', '') }}" />
+	<base href="{{ config.get('APPLICATION_ROOT') or '' }}" />
 
 	<title>PyPush</title>
 	
