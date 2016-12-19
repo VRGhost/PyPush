@@ -8,4 +8,4 @@ cd "${PROJECT_ROOT}"
 export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH}"
 
 echo ${IN_VENV}
-exec python -m PyPush.web $*
+exec python -m PyPush $*

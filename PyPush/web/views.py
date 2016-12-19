@@ -3,14 +3,8 @@ from flask import render_template, Response
 
 from flask_restful import Resource, Api, reqparse
 
-from . import (
-    db,
-)
+from PyPush.core import db
 from .const import MB_ACTIONS
-from .app import PUSH_APP
-
-api = PUSH_APP.restful
-app = PUSH_APP.flask
 
 
 class CUSTOM_MB_ACTIONS(object):
@@ -20,12 +14,14 @@ class CUSTOM_MB_ACTIONS(object):
 class ActionChainConstructor(object):
     """This object helps to construct BLE action chain."""
 
-    def __init__(self, microbotId):
+    def __init__(self, flaskUI, microbotId):
+        super(ActionChainConstructor, self).__init__()
+        self.flaskUI = flaskUI
         self._actions = []
-        self._actionLog = PUSH_APP.microbotActionLog
+        self._actionLog = flaskUI.core.microbotActionLog
         
-        _mbId = PUSH_APP.ble.getDbId(microbotId)
-        self._microbot = PUSH_APP.db.session.query(db.Microbot).get(_mbId)
+        _mbId = flaskUI.core.ble.getDbId(microbotId)
+        self._microbot = flaskUI.core.db.session.query(db.Microbot).get(_mbId)
 
     def clear(self):
         """Clear the action chain."""
@@ -57,12 +53,13 @@ class ActionChainConstructor(object):
         if not self._actions:
             return ()
 
-        with PUSH_APP.db_lock:
-            s = PUSH_APP.db.session
+        core = self.flaskUI.core
+        with core.db_lock:
+            s = core.db.session
             s.add_all(self._actions)
             s.commit()
         rv = [rec.id for rec in self._actions]
-        PUSH_APP.ble.syncToBt()
+        core.ble.syncToBt()
         self.clear()
 
         return rv
@@ -70,6 +67,9 @@ class ActionChainConstructor(object):
 
 class MicrobotList(Resource):
 
+    def __init__(self, flaskUI):
+        super(MicrobotList, self).__init__()
+        self.flaskUI = flaskUI
 
     def get(self):
         out = []
@@ -112,6 +112,10 @@ MICROBOT_PARSER.add_argument("calibration")
 
 class Microbot(Resource):
 
+    def __init__(self, flaskUI):
+        super(Microbot, self).__init__()
+        self.flaskUI = flaskUI
+
     def post(self, mbId):
         args = MICROBOT_PARSER.parse_args()
         newName = args["name"]
@@ -123,11 +127,11 @@ class Microbot(Resource):
 
         if newName and mb.name != newName:
             mb.name = newName
-            PUSH_APP.db.session.commit()
+            self.flaskUI.core.db.session.commit()
 
         if mb.calibration != newCalibration:
             # Schedule calibration change
-            chain = ActionChainConstructor(mbId)
+            chain = ActionChainConstructor(self.flaskUI, mbId)
             chain.append(MB_ACTIONS.retract.key)
             chain.append(
                 MB_ACTIONS.calibrate.key, args=(float(newCalibration), )).prev_action_delay = 2
@@ -141,8 +145,12 @@ class Microbot(Resource):
 
 class MicrobotAction(Resource):
 
+    def __init__(self, flaskUI):
+        super(MicrobotAction, self).__init__()
+        self.flaskUI = flaskUI
+
     def get(self, mbId, action):
-        chain = ActionChainConstructor(mbId)
+        chain = ActionChainConstructor(self.flaskUI, mbId)
         if action in MB_ACTIONS:
             # A primitive microbot action is called upon
             chain.append(action)
@@ -160,24 +168,39 @@ class MicrobotAction(Resource):
             "action_ids": ids
         }
 
-api.add_resource(MicrobotList, '/api/microbots')
-api.add_resource(Microbot, '/api/microbots/<string:mbId>')
-api.add_resource(
-    MicrobotAction,
-    '/api/microbots/<string:mbId>/<string:action>')
+
+class FlaskRoutes(object):
+
+    def __init__(self, flaskUI):
+        self.flaskUI = flaskUI
+
+    def get_action_log(self):
+        return Response(
+            self.flaskUI.core.microbotActionLog.readAll(),
+            mimetype='text/csv',
+        )
+
+    def index(self):
+        return render_template(
+            'index.html',
+        )
+
+def create_views(flaskUI):
+    """Assign Web views to the flask app."""
+    restful = flaskUI.restful
+    flask = flaskUI.flask
+
+    kw = {"flaskUI": flaskUI}
+
+    routes = FlaskRoutes(flaskUI)
+    flask.route("/")(routes.index)
+    flask.route("/info/action_log.csv")(routes.get_action_log)
 
 
-@app.route("/info/action_log.csv")
-def get_action_log():
-    return Response(PUSH_APP.microbotActionLog.readAll(), mimetype='text/csv')
-
-@app.route("/")
-def index():
-    return render_template(
-        'index.html',
+    restful.add_resource(MicrobotList, '/api/microbots', resource_class_kwargs=kw)
+    restful.add_resource(Microbot, '/api/microbots/<string:mbId>', resource_class_kwargs=kw)
+    restful.add_resource(
+        MicrobotAction,
+        '/api/microbots/<string:mbId>/<string:action>',
+        resource_class_kwargs=kw,
     )
-
-
-@app.route('/debug')
-def open_debug():
-    raise Exception("Debugger")

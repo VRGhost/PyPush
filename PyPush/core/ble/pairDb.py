@@ -1,9 +1,7 @@
 """Pairing data database."""
-import contextlib
 
 import PyPush.lib as Lib
-
-from PyPush.web import db
+from PyPush.core import db
 
 class PairDb(Lib.iLib.iPairingKeyStorage):
     """Accessor to the pairing key storage."""
@@ -39,7 +37,5 @@ class PairDb(Lib.iLib.iPairingKeyStorage):
     def _queryByUid(self, session, uid):
         return session.query(db.PairingKey).filter_by(uuid=uid)
 
-    @contextlib.contextmanager
     def _session(self):
-        with self.service.sessionCtx() as session:
-            yield session
+        return self.service.sessionCtx()

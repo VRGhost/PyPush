@@ -10,7 +10,7 @@ from sqlalchemy import func, update
 
 from ..const import MB_ACTIONS
 
-from PyPush.web import db
+from PyPush.core import db
 
 import PyPush.lib as Lib
 
@@ -65,7 +65,7 @@ class ActionWriter(object):
                 action.microbot.last_error = tb
                 actionResult = 60 # Retry in 1 minute
                 
-            self.service.app.microbotActionLog.logOrderCompleted(
+            self.service.core.microbotActionLog.logOrderCompleted(
                 action.microbot, cmd, args, kwargs,
             )
 
@@ -168,6 +168,7 @@ class MicrobotReconnector(object):
                     self.log.info("Connecting to {!r}".format(uid))
                     try:
                         mb.connect()
+                        print repr(mb.DEBUG_getFullState())
                     except Lib.exceptions.Timeout:
                         self.log.exception("Timeout while reconnecting")
                     finally:

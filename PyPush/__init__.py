@@ -1,5 +1,8 @@
 
+
 from . import (
-    lib,
+    lib, # mind the import order
+    core,
     web,
+    main,
 )

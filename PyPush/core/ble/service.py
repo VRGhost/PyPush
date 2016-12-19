@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import func, update
 
 import PyPush.lib as Lib
-from PyPush.web import db
+from PyPush.core import db
 
 from . import daemon, pairDb
 
@@ -22,24 +22,30 @@ class MicrobotBluetoothService(object):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pushApp):
-        self.app = pushApp
+    def __init__(self, core):
+        self.core = core
         self._daemon = daemon.BLEDaemon(self)
         self._pairDb = pairDb.PairDb(self)
         self._microbots = {}  # uid -> microbot
         self._dbIds = {}  # uid -> db id
+        self._hub = None
 
-    def start(self, bleDriver, bleDevice):
+    def getPairDb(self):
+        """Returns microbot pair db for the service."""
+        return self._pairDb
+
+    def setHub(self, hub):
+        assert self._hub is None
+        self._hub = hub
+
+    def start(self):
         """Start the service."""
-        config = {
-            "driver": bleDriver,
-            "device": bleDevice,
-        }
+        self._hub.start()
+
         with self.sessionCtx() as s:
             stmt = update(db.Microbot).values(is_connected=False)
             s.execute(stmt)
 
-        self._hub = Lib.PushHub(config, self._pairDb)
         self._evtHandle = self._hub.onMicrobot(self._onMbFound, self._onMbLost)
         self._daemon.start()
 
@@ -138,18 +144,5 @@ class MicrobotBluetoothService(object):
         """Sync db -> BLE state."""
         self._daemon.wakeup()
 
-    @contextlib.contextmanager
     def sessionCtx(self):
-        with self.app.db_lock:
-            with self.app.flask.app_context():
-                session = self.app.db.create_scoped_session({})
-                try:
-                    try:
-                        yield session
-                    except:
-                        session.rollback()
-                        raise
-                    else:
-                        session.commit()
-                finally:
-                    session.close()
+        return self.core.getDbSession()

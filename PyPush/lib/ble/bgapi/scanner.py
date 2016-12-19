@@ -4,9 +4,6 @@ import datetime
 import time
 import logging
 
-from . import const
-
-
 class _ScanThread_(threading.Thread):
 
     log = logging.getLogger(__name__)
@@ -62,8 +59,12 @@ class Scanner(object):
         for el in evt.adv_payload:
             if el.type_name == "BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME" and el.data == "mibp":
                 return True
-            if el.type_code == const.MB_PAIRED_WITH_ANNOUNCEMENT and el.data == self._myUUID[
-                    -4:]:
+            # The event type codes for paired microbots discovered so far are:
+            #   0xD9
+            #   0xC8
+            # As I do not know if there are any other type codes, I've decided to opt for safer
+            #   option of using "> 200" condition
+            if el.type_code > 200 and el.data == self._myUUID[-4:]:
                 # Microbots have this appearing when they've been pairted with
                 # someting
                 return True

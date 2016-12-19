@@ -5,9 +5,7 @@ from . import (
 )
 
 from . import (
-    app,
-    db,
+    ui,
     views,
-    ble,
     main,
 )

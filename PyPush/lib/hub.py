@@ -26,6 +26,10 @@ class PushHub(iLib.iHub):
         self._ble.onScan(self._onBleScan)
         self._gcMicrobots()
 
+    def start(self):
+        """Start daemon threads."""
+        self._ble.start()
+
     def onMicrobot(self, onDiscovered, onLost):
         handles = []
         if onDiscovered:

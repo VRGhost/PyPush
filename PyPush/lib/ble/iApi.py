@@ -5,6 +5,10 @@ class iApi(object):
     __metaclass__ = ABCMeta
 
     @abstractmethod
+    def start(self):
+        """Start any associated daemon threads."""
+
+    @abstractmethod
     def onScan(self, callback):
         """This method calls `callback` on every microbot push detect via BLE scan.
 

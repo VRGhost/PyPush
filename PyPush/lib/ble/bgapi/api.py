@@ -17,6 +17,11 @@ class API(iApi.iApi):
     def __init__(self, config):
         """Config must be a dictionary with "device" key (specifying tty of the bluegiga token)"""
         self._microbotDb = mbRegistry.MicrobotRegistry(maxAge=60 * 60)
+        self._config = config
+
+    def start(self):
+        config = self._config
+        
         _ble = BlueGigaClient(
             port=config["device"],
             baud=config.get("baud", 115200),

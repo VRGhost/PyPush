@@ -13,3 +13,5 @@ from . import (
 from . import hub as _hubModule
 
 PushHub = _hubModule.PushHub
+
+from . import main

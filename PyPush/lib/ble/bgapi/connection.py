@@ -196,7 +196,8 @@ class BgConnection(iApi.iConnection):
         rv = {}
         for srv in self._bleConn.get_services():
             rv[self._humanServiceName(srv)] = srvData = {}
-            for char in self._serviceToCharacteristics[srv.uuid]:
+            characteristics = self._lazyLoadCharacteristics(self._bleConn, srv.uuid)
+            for char in characteristics:
                 if char.gatt.is_readable():
                     self._bleConn.read_by_handle(char.gatt.handle + 1)
                     value = char.gatt.value
