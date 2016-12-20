@@ -57,7 +57,7 @@ class Scanner(object):
     def _isMicrobot(self, evt):
         evt.parse_advertisement_data()
         for el in evt.adv_payload:
-            if el.type_name == "BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME" and el.data == "mibp":
+            if el.type_name == "BLE_GAP_AD_TYPE_COMPLETE_LOCAL_NAME" and el.data in ("mibp", "mib-push"):
                 return True
             # The event type codes for paired microbots discovered so far are:
             #   0xD9

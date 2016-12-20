@@ -168,7 +168,6 @@ class MicrobotReconnector(object):
                     self.log.info("Connecting to {!r}".format(uid))
                     try:
                         mb.connect()
-                        print repr(mb.DEBUG_getFullState())
                     except Lib.exceptions.Timeout:
                         self.log.exception("Timeout while reconnecting")
                     finally:
