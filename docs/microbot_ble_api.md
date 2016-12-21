@@ -28,8 +28,8 @@ Known services:
  *  `2A15`: pusher extension status, found in the firmware `0x0105`, not available in the fw `0x0100`
  *  `2A16`: role unknown, only known to exist in the firmware `0x0100`
  *  `2A18`: role unknown, only known to exist in the firmware `0x0105`
- *  `2A35`: suspected pusher mode. `d` for default, `<` for "extended by default"
- *  `2A53`: another suspect for the pusher mode (`\x01` for extended, `\x00` for default)
+ *  `2A35`: pusher extension calibration level (0 - 100 scale)
+ *  `2A53`: pusher mode (`\x01` for extended, `\x00` for retracted, `\x03` for toggle)
  *  `2A77`: only found in the `0x0105` firmware. Role unknown. Maybe toggle mode?
 
 ## Service `1831`

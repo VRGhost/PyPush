@@ -1,3 +1,5 @@
+"""This is a shor script I am using to poke various low-level device APIs."""
+
 import shelve
 import time
 import logging
@@ -27,12 +29,19 @@ class MyKeyDb(PyPush.lib.iLib.iPairingKeyStorage):
 		except KeyError:
 			pass
 
+def printMb(mb):
+	print "ON microbot callback ({}, UUID:{!r})".format(mb, mb.getUID())
+
+USA_MICROBOT = 'E2:49:C3:06:6F:CA'
+
 DB = MyKeyDb()
 service = PyPush.lib.PushHub(
 	{"driver": "bgapi", "device": "/dev/tty.usbmodem1"},
 	DB
 )
-mb = service.getMicrobot('D6:CF:D7:59:7F:ED')
+service.onMicrobot(printMb, None)
+service.start()
+mb = service.getMicrobot(USA_MICROBOT)
 
 
 try:
@@ -44,28 +53,15 @@ except PyPush.lib.exceptions.NotPaired as err:
 	DB.db.sync()
 
 
-ret = []
-ext = []
+### Test code
 
-# while True:
-# 	print mb.isRetracted()
-# 	time.sleep(5)
+print "Battery level", mb.getBatteryLevel()
+(s, c) = ('1821', '2A53')
+mb._conn().write(s, c, '\x03')
+time.sleep(5)
+print "End val", repr(mb._conn().read(s, c))
 
 
-
-
-#mb.setCalibration(0.5)
-#print mb.getCalibration()
-#print mb.getBatteryLevel()
-#mb.setCalibration(0.5)
-# mb.extend()
-# time.sleep(4)
-# mb.retract()
-while True:
-	print mb.isRetracted()
-	time.sleep(5)
-#mb.led(0, 1, 0, duration=10)
-#mb.disconnect()
-
+### test code end
 
 DB.db.close()
