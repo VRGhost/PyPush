@@ -11,6 +11,7 @@ This project is planned to contain three separate elements:
   * [daemon](#microbot-push-daemon) that handles most of the BLE-related chores (e.g. device discovery/pairing/etc)
   * [simple web interface](#web-ui) to interact with the daemon
 
+You can find a dump of my current understanding of the Microbot's low-level Bluetooth API (here)[docs/microbot_ble_api.md]
 
 ## Microbot Push Library
 
