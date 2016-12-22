@@ -105,6 +105,6 @@ class FirmwareV015(FirmwareBase):
         return rv
 
     def waitForPusherStateChange(self):
-        return self._waitForRegisterStateChange((
+        return self.mb._waitForRegisterStateChange((
             (const.PushServiceId, const.DeviceStatus),
         ))

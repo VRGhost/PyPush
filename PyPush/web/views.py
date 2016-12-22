@@ -33,7 +33,6 @@ class ActionChainConstructor(object):
     def append(self, action, args=(), kwargs=None):
         """Append new action to the end of the action chain."""
         action_args=(args, kwargs or {})
-        print action_args
 
         rec = db.Action(
             microbot_id=self._microbot.id,

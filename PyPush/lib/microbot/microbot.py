@@ -64,7 +64,7 @@ def get_firmware_version(connection):
     if data and len(data) == 3:
         rv = struct.unpack("BBB", data)
     else:
-        self.log.error("Unexpected firmware version string: {!r}".format(data))
+        logging.error("Unexpected firmware version string: {!r}".format(data))
         rv = (0, 1, 0) # Stock factory firmware
     return rv
 
@@ -113,8 +113,7 @@ class MicrobotPush(iLib.iMicrobot):
 
             key = self._keyDb.get(uid)
             conn = self._bleApi.connect(self._bleMb)
-            fwOverlayCls = self._getFwOverlay(get_firmware_version(conn))
-            self._fwOverlay = fwOverlayCls(self)
+            self._updateFwOverlay(conn)
 
             status = self._checkStatus(conn, key)
 
@@ -200,7 +199,8 @@ class MicrobotPush(iLib.iMicrobot):
         if status == 0x01:
             # Pairing sucessfull.
             self._keyDb.set(self.getUID(), key[:16])
-            self._stableConn = _StableAuthorisedConnection(self, conn)
+            self._updateFwOverlay(conn)
+            self._stableConn = StableAuthorisedConnection(self, conn)
             self._fireChangeState()
         else:
             conn.close()
@@ -461,6 +461,11 @@ class MicrobotPush(iLib.iMicrobot):
             LedStatus(True, False, True),
             LedStatus(True, True, False),
         )
+
+    def _updateFwOverlay(self, connection):
+        """Updates fw overlay in accordance to the firmware version."""
+        fwOverlayCls = self._getFwOverlay(get_firmware_version(connection))
+        self._fwOverlay = fwOverlayCls(self)
 
     def _getFwOverlay(self, fwVersion):
         """This method returns firmware overlay class appropriate for the firmware verison provided."""
