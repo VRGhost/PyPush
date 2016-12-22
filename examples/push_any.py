@@ -33,6 +33,7 @@ def printMb(mb):
 	print "ON microbot callback ({}, UUID:{!r})".format(mb, mb.getUID())
 
 USA_MICROBOT = 'E2:49:C3:06:6F:CA'
+V10_MICROBOT = 'EA:FE:E8:50:75:CB'
 
 DB = MyKeyDb()
 service = PyPush.lib.PushHub(
@@ -41,7 +42,7 @@ service = PyPush.lib.PushHub(
 )
 service.onMicrobot(printMb, None)
 service.start()
-mb = service.getMicrobot(USA_MICROBOT)
+mb = service.getMicrobot(V10_MICROBOT)
 
 
 try:
@@ -55,12 +56,10 @@ except PyPush.lib.exceptions.NotPaired as err:
 
 ### Test code
 
-print "Battery level", mb.getBatteryLevel()
-(s, c) = ('1821', '2A53')
-mb._conn().write(s, c, '\x03')
-time.sleep(5)
-print "End val", repr(mb._conn().read(s, c))
-
+mb.extend()
+print "Extended"
+mb.retract()
+print "Retracted"
 
 ### test code end
 

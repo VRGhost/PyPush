@@ -11,6 +11,7 @@ from sqlalchemy.orm import (
 
 from flask_sqlalchemy import SQLAlchemy
 
+from PyPush.lib.const import ButtonMode
 from . import const
 
 db = SQLAlchemy()
@@ -45,6 +46,9 @@ class Microbot(db.Model):
     retracted = db.Column(db.Boolean(), nullable=True)
     battery = db.Column(db.Float(), nullable=True)
     calibration = db.Column(db.Float(), nullable=True)
+
+    button_mode = db.Column(db.Enum(ButtonMode), nullable=True)
+    firmware_version = db.Column(db.PickleType(), nullable=True)
 
     last_error = db.Column(db.Text(), nullable=True)
     last_seen = db.Column(db.DateTime, nullable=False)
@@ -85,7 +89,7 @@ class Action(db.Model):
     retries_left = db.Column(db.Integer, nullable=False, default=5)
     scheduled_at = db.Column(db.DateTime, default=OLD_TIME, nullable=False)
 
-    action = db.Column(db.Enum(*[str(el) for el in const.MB_ACTIONS]))
+    action = db.Column(db.String(), nullable=False)
     action_args = db.Column(
         db.PickleType(),
         default=(),

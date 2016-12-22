@@ -25,6 +25,9 @@ class SubscriptionHandle(iHandle):
         """Cancel the subscription."""
         self._hub._unsubscribe(self)
 
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self.callback)
+
 
 class MultiHandle(iHandle):
     """A `handle` object that relays any API call to a number of other `handle` objects."""
@@ -36,6 +39,8 @@ class MultiHandle(iHandle):
         for ch in self._children:
             ch.cancel()
 
+    def __repr__(self):
+        return "<{} {!r}>".format(self.__class__.__name__, self._children)
 
 class SubscribeHub(object):
     """A hub object that can register/unregister callbacks."""
@@ -71,6 +76,7 @@ class SubscribeHub(object):
                 handle.callback(*args, **kwargs)
             except Exception:
                 self.log.exception("Callback exception")
+                raise
 
     def getSubscriberCount(self):
         return len(self._callbacks)

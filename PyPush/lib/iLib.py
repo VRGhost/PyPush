@@ -57,7 +57,6 @@ class iHub(object):
     def getAllMicrobots(self):
         """Returns an interable of all microbots currently known to the system."""
 
-
 class iMicrobot(object):
     """High-level microbot interface."""
 
@@ -142,3 +141,15 @@ class iMicrobot(object):
     @abstractmethod
     def onStateChange(self, cb):
         """Registers a new callback that will be fired whenever this microbot object experiences a change of state."""
+
+    @abstractmethod
+    def getFirmwareVersion(self):
+        """Returns microbot's firmware version (3-element tuple)."""
+
+    @abstractmethod
+    def getButtonMode(self):
+        """Returns <const.ButtonMode> element representing the current setting for the device."""
+
+    @abstractmethod
+    def setButtonMode(self, state):
+        """Accepts <const.ButtonMode> element as an argument, sets the button mode."""

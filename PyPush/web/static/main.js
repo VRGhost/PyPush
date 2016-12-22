@@ -5,10 +5,19 @@ angular.module("PyPushApp", ["ngResource", 'ui.bootstrap', 'ui.bootstrap.tpls', 
 		var Microbot = $resource($browser.baseHref() + '/api/microbots/:id', {id: '@id'}, {
 		});
 
-		var MicrobotAction = $resource($browser.baseHref() + "/api/microbots/:id/:action", {id: "@id", action: "@action"})
+		var MicrobotAction = $resource(
+			$browser.baseHref() + "/api/microbots/:id/:action",
+			{id: "@id", action: "@action"}
+		);
 		
 		$scope.microbots = {};
 		$scope.collapseStatus = {};
+
+		var mbById = (function(searchId)
+		{
+			console.log([searchId, $scope.microbots]);
+			return $scope.microbots[searchId];
+		});
 
 		$scope.doAction = (function(uuid, action)
 		{
@@ -18,6 +27,14 @@ angular.module("PyPushApp", ["ngResource", 'ui.bootstrap', 'ui.bootstrap.tpls', 
 		$scope.updateName = (function(microbot, newName){
 			microbot.name = newName;
 			microbot.$save();
+		});
+
+		$scope.setButtonMode = (function(mbId, newMode){
+			MicrobotAction.get({
+				id: mbId, 
+				action: "change_button_mode",
+				args: [newMode],
+			});
 		});
 
 		$scope.updateCalibration = (function(microbot, newValue){
@@ -33,7 +50,10 @@ angular.module("PyPushApp", ["ngResource", 'ui.bootstrap', 'ui.bootstrap.tpls', 
 
 		$scope.publicEndpointActions = (function(actions){
 			var out = [];
-			var hiddenActions = ["calibrate"];
+			var hiddenActions = [
+				"calibrate",
+				"change_button_mode"
+			];
 			angular.forEach(actions, function(action){
 				if(hiddenActions.indexOf(action) < 0)
 				{

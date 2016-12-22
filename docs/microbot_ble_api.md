@@ -29,7 +29,7 @@ Known services:
  *  `2A16`: role unknown, only known to exist in the firmware `0x0100`
  *  `2A18`: role unknown, only known to exist in the firmware `0x0105`
  *  `2A35`: pusher extension calibration level (0 - 100 scale)
- *  `2A53`: pusher mode (`\x01` for extended, `\x00` for retracted, `\x03` for toggle)
+ *  `2A53`: pusher mode (`\x01` for extended, `\x00` for retracted, ~`\x03` for toggle~ (unconfirmed))
  *  `2A77`: only found in the `0x0105` firmware. Role unknown. Maybe toggle mode?
 
 ## Service `1831`

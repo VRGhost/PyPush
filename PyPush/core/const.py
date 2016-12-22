@@ -8,4 +8,13 @@ REPO_ROOT = os.path.abspath(
 TMP_DIR = os.path.join(REPO_ROOT, "_tmp")
 assert os.path.isdir(TMP_DIR), TMP_DIR
 
-MB_ACTIONS = enum.Enum("pair", "blink", "extend", "retract", "calibrate")
+@enum.unique
+class MbActions(enum.Enum):
+    """Core Api commands for the microbot."""
+    
+    pair = "pair"
+    blink = "blink"
+    extend = "extend"
+    retract = "retract"
+    calibrate = "calibrate"
+    change_button_mode = "change_button_mode"

@@ -12,193 +12,21 @@ import functools
 import threading
 import contextlib
 
-from . import (
+from .. import (
     iLib,
     exceptions,
     const,
     async,
 )
 
-from .ble import exceptions as bleExceptions
+from ..ble import exceptions as bleExceptions
+
+from .subscribingReader import SubscribingReader
+from .stableConnection import StableAuthorisedConnection
+
+from . import fwMicrobot
 
 LedStatus = collections.namedtuple("LedStatus", ["r", "g", "b"])
-
-class StateChangeError(exceptions.Timeout):
-    """This exception is raised when microbot's state is not as expected."""
-
-
-class _SubscribedReader(object):
-    """A handler object that auto-subscribes to notifications on the characteristics being read.
-
-    This allows for all successive reads to the microbot to be much faster as no read command is
-    actually issued.
-    """
-
-    log = logging.getLogger()
-    UNSUPPORTED_REFRESH_FREQ = 5 * 60  # seconds
-
-    def __init__(self, mb):
-        self.mb = mb
-        self._handles = {}  # List of all notify handles
-        self._values = {}  # Cache of all values
-        self._unsupportedValues = {}  # key -> (value, expire_time)
-        # List of all read() addresses that do not support notify.
-        self._unsupported = set()
-        self.callbacks = async.SubscribeHubDict()
-
-    def clear(self):
-        """Forgets all notify subscriptions.
-
-        Does not forget list of endpoints not supporting notify
-        as this won't change on the connection restore.
-        """
-        for handle in self._handles.itervalues():
-            handle.cancel()
-        self._handles.clear()
-        self._values.clear()
-
-    def read(self, service, char):
-        """Performs BLE read if not subscribed to the notification.
-
-        Returns cached value if subscribed to the notification.
-        """
-        key = (service, char)
-        conn = self.mb._conn()
-
-        try:
-            if key in self._unsupported:
-                rv = self._readUnsupported(conn, service, char)
-            else:
-                try:
-                    rv = self._values[key]
-                except KeyError:
-                    try:
-                        self._handles.pop(key).cancel()
-                    except KeyError:
-                        pass
-                    # Not cached yet
-                    rv = conn.read(service, char, timeout=15)
-                    try:
-                        self._subscribe(conn, service, char)
-                    except bleExceptions.NotSupported:
-                        self._unsupported.add(key)
-                    else:
-                        self._values[key] = rv
-        except bleExceptions.Timeout:
-            self.log.exception("BLE timeout")
-            raise exceptions.Timeout("Read timeout")
-        return rv
-
-    def _readUnsupported(self, conn, service, char):
-        key = (service, char)
-        try:
-            (oldVal, expireTime) = self._unsupportedValues[key]
-        except KeyError:
-            oldVal = None
-            expireTime = 0
-
-        now = time.time()
-        if now > expireTime:
-            # Re-read the data
-            rv = conn.read(service, char)
-            self._unsupportedValues[key] = (
-                rv, now + self.UNSUPPORTED_REFRESH_FREQ)
-        else:
-            rv = oldVal
-        return rv
-
-    def _setCache(self, service, characteristics, value):
-        key = (service, characteristics)
-        self._unsupportedValues[key] = (
-            value, time.time() + self.UNSUPPORTED_REFRESH_FREQ)
-        self._values[key] = value
-
-    def reSubscribe(self):
-        """Resubscribe for to all notifications this object had been subscribed for.
-
-        Normally executed on the reconnect.
-        """
-        _oldSubscriptions = self._handles.keys()
-        self.clear()
-
-        conn = self.mb._conn()
-        for (service, char) in _oldSubscriptions:
-            self._subscribe(conn, service, char)
-
-    def _subscribe(self, conn, service, char):
-        key = (service, char)
-        if key not in self._handles:
-            self._handles[key] = conn.onNotify(
-                service, char, lambda data: self._onNotify(key, data))
-
-    def _onNotify(self, key, data):
-        if data != self._values.get(key):
-            self._values[key] = data
-            self._fireChangeEvents(key)
-
-    def _fireChangeEvents(self, key):
-        self.callbacks[key].fireSubscribers(key)
-        self.mb._fireChangeState()
-
-
-class _StableAuthorisedConnection(object):
-    """Auto-reconnecting BLE connection.
-
-    This is a wrapper for the BLE connection that auto-reconnects to
-    the device & re-authorises connection with the microbot.
-
-    This wrapper performs `retries` connection-reattempts at most.
-    """
-
-    _active = True
-    log = logging.getLogger(__name__)
-
-    def __init__(self, microbot, bleConnection, retries=5):
-        self._mb = microbot
-        self._conn = bleConnection
-        self._maxRetries = retries
-        self._mutex = threading.RLock()
-
-    def get(self):
-        """Returns an established BLE connection."""
-        retry = 0
-        if not self._active:
-            raise exceptions.ConnectionError("Connection closed.")
-
-        with self._mutex:
-            try:
-                while not self._conn.isActive() and retry < self._maxRetries:
-                    self._restoreConnection()
-                    # Sleep for a bit to give the device time to recover
-                    time.sleep(retry)
-                    retry += 1
-            except Exception:
-                self.log.exception("Error restoring BLE connection")
-                self._active = False
-
-            if not self._conn.isActive():
-                # Exceeded retry count
-                self._active = False
-                raise exceptions.ConnectionError("Connection failed")
-        return self._conn
-
-    def isActive(self):
-        return self._active
-
-    def close(self):
-        """Close the connection."""
-        with self._mutex:
-            if self._conn.isActive():
-                self._conn.close()
-            self._active = False
-
-    def _restoreConnection(self):
-        with self._mutex:
-            assert self._active
-            assert not self._conn.isActive(), self._conn
-
-            self._conn = self._mb._sneakyConnect()
-            self._mb._onReconnect()
 
 
 def ConnectedApi(fn):
@@ -230,6 +58,16 @@ def NotConnectedApi(fn):
 
     return _wrapper_
 
+def get_firmware_version(connection):
+    """Acquire firmware version tuple from the connection."""
+    data = connection.read(const.MicrobotServiceId, "2A21")
+    if data and len(data) == 3:
+        rv = struct.unpack("BBB", data)
+    else:
+        self.log.error("Unexpected firmware version string: {!r}".format(data))
+        rv = (0, 1, 0) # Stock factory firmware
+    return rv
+
 class MicrobotPush(iLib.iMicrobot):
 
     log = logging.getLogger(__name__)
@@ -244,13 +82,14 @@ class MicrobotPush(iLib.iMicrobot):
         self._keyDb = keyDb
         self._mutex = threading.RLock()
         self._onChangeCbs = async.SubscribeHub()
-        self._reader = _SubscribedReader(self)
+        self.reader = SubscribingReader(self)
+        self._fwOverlay = None
 
     @NotConnectedApi
     def connect(self):
         with self._mutex:
             if self.isPaired():
-                self._stableConn = _StableAuthorisedConnection(
+                self._stableConn = StableAuthorisedConnection(
                     self, self._sneakyConnect())
             else:
                 raise exceptions.NotPaired(0xFE, "This connection is not paired.")
@@ -274,6 +113,8 @@ class MicrobotPush(iLib.iMicrobot):
 
             key = self._keyDb.get(uid)
             conn = self._bleApi.connect(self._bleMb)
+            fwOverlayCls = self._getFwOverlay(get_firmware_version(conn))
+            self._fwOverlay = fwOverlayCls(self)
 
             status = self._checkStatus(conn, key)
 
@@ -301,7 +142,7 @@ class MicrobotPush(iLib.iMicrobot):
     def disconnect(self):
         with self._mutex:
             if self.isConnected():
-                self._reader.clear()
+                self.reader.clear()
                 self._stableConn.close()
                 self._stableConn = None
 
@@ -396,23 +237,23 @@ class MicrobotPush(iLib.iMicrobot):
     @ConnectedApi
     def extend(self):
         """Extend the pusher."""
-        if not self.isRetracted():
+        if self.isRetracted() is False: # 'None' should not get into this `if`
             self.log.info("The pusher is already extended.")
             return
 
         with self._mutex:
             self.log.info("Extending the pusher.")
             try:
-                with self._waitForRegisterStateChange(const.PushServiceId, const.DeviceStatus):
+                with self._waitForPusherStateChange():
                     self._conn().write(
                         const.PushServiceId, "2A11",
                         '\x01'
                     )
-            except StateChangeError:
-                raise exceptions.IOError("Sending retract command did not affect state of the device.")
+            except exceptions.StateChangeError:
+                raise exceptions.IOError("Sending extend command did not affect state of the device.")
                 
             if self.isRetracted():
-                raise exceptions.IOError("Device is not retracted although the retract command had been sent.")
+                raise exceptions.IOError("Device is not extended although the extended command had been sent.")
 
     @ConnectedApi
     def retract(self):
@@ -425,26 +266,24 @@ class MicrobotPush(iLib.iMicrobot):
         with self._mutex:
             self.log.info("Retracting the pusher.")
             try:
-                with self._waitForRegisterStateChange(const.PushServiceId, const.DeviceStatus):
+                with self._waitForPusherStateChange():
                     self._conn().write(
                         const.PushServiceId, "2A12",
                         '\x01'
                     )
-            except StateChangeError:
+            except exceptions.StateChangeError:
                 raise exceptions.IOError("Sending retract command did not affect state of the device.")
 
             if not self.isRetracted():
                 raise exceptions.IOError("Device is not retracted although the retract command had been sent.")
 
+    def _waitForPusherStateChange(self):
+        """This context blocks until pusher's state changes."""
+        return self._fwOverlay.waitForPusherStateChange()
 
     @ConnectedApi
     def isRetracted(self):
-        status = self._reader.read(const.PushServiceId, const.DeviceStatus)
-        if status:
-            rv = (status[1] == "\x00")
-        else:
-            rv = None
-        return rv
+        return self._fwOverlay.isRetracted()
 
     @ConnectedApi
     def setCalibration(self, percentage):
@@ -455,15 +294,16 @@ class MicrobotPush(iLib.iMicrobot):
             const.PushServiceId, const.DeviceCalibration,
             data
         )
-        self._reader._setCache(
+        self.reader._setCache(
             const.PushServiceId,
             const.DeviceCalibration,
-            data)
+            data
+        )
 
     @ConnectedApi
     def getCalibration(self):
         self.log.info("Getting calibration.")
-        data = self._reader.read(const.PushServiceId, const.DeviceCalibration)
+        data = self.reader.read(const.PushServiceId, const.DeviceCalibration)
         try:
             (rv, ) = struct.unpack('B', data)
         except:
@@ -476,7 +316,7 @@ class MicrobotPush(iLib.iMicrobot):
     @ConnectedApi
     def getBatteryLevel(self):
         self.log.info("Getting battery level.")
-        data = self._reader.read(const.MicrobotServiceId, "2A19")
+        data = self.reader.read(const.MicrobotServiceId, "2A19")
         try:
             (rv, ) = struct.unpack('B', data)
         except:
@@ -491,6 +331,33 @@ class MicrobotPush(iLib.iMicrobot):
         self.log.info("Blinking device.")
         seconds = min(0xFF, max(0, int(seconds)))
         self._conn().write(const.MicrobotServiceId, "2A13", struct.pack("B", seconds))
+
+    @ConnectedApi
+    def getFirmwareVersion(self):
+        return get_firmware_version(self.reader)
+
+    @ConnectedApi
+    def getButtonMode(self):
+        data = self.reader.read(const.PushServiceId, "2A53")
+        if data and len(data) == 1:
+            rv = const.ButtonMode(ord(data))
+        else:
+            self.log.error("Unexpected button mode: {!r}".format(data))
+            rv = None # Unknown
+        return rv
+
+    @ConnectedApi
+    def setButtonMode(self, mode):
+        if isinstance(mode, int):
+            val = const.ButtonMode(mode)
+        elif isinstance(mode, basestring):
+            val = const.ButtonMode[mode]
+        else:
+            raise NotImplementedError(mode)
+        self.log.info("Setting button mode to {!r}".format(val))
+        data = struct.pack("B", int(val))
+        self._conn().write(const.PushServiceId, "2A53", data)
+        self._fireChangeState()
 
     @ConnectedApi
     def DEBUG_getFullState(self):
@@ -520,22 +387,34 @@ class MicrobotPush(iLib.iMicrobot):
         return self._keyDb.hasKey(self.getUID())
 
     @contextlib.contextmanager
-    def _waitForRegisterStateChange(self, service, characteristics, timeout=10):
+    def _waitForRegisterStateChange(self, keys, timeout=10):
         evt = threading.Event()
-        key = (service, characteristics)
-        handle = self._reader.callbacks[key].subscribe(lambda *a, **k: evt.set())
-        yield
-        evtSet = evt.wait(timeout)
-        handle.cancel()
+        handles = []
+
+        def _evtCb(key, oldVal, newValue):
+            if oldVal != newValue:
+                evt.set()
+
+        for key in keys:
+            # key is (service, characteristics)
+            handles.append(self.reader.callbacks[key].subscribe(_evtCb))
+
+        try:
+            yield
+            evtSet = evt.wait(timeout)
+        finally:
+            for handle in handles:
+                handle.cancel()
+
         if not evtSet:
-            raise StateChangeError("State change did not arrive")
+            raise exceptions.StateChangeError("State change did not arrive")
 
     def _fireChangeState(self):
         self._onChangeCbs.fireSubscribers(self)
 
     def _onReconnect(self):
         """Callback executed on reconnection to the microbot."""
-        self._reader.reSubscribe()
+        self.reader.reSubscribe()
 
     def _checkStatus(self, bleConnection, pairKey):
         if not pairKey:
@@ -579,10 +458,17 @@ class MicrobotPush(iLib.iMicrobot):
     def _getPairColourSequence(self):
         """Return colour sequence the Microbot is cycling trough while waiting for user touch."""
         return (
-            LedStatus(False, True, True),
             LedStatus(True, False, True),
             LedStatus(True, True, False),
         )
+
+    def _getFwOverlay(self, fwVersion):
+        """This method returns firmware overlay class appropriate for the firmware verison provided."""
+        if fwVersion == (0, 1, 0):
+            rv = fwMicrobot.FirmwareV010
+        else:
+            rv = fwMicrobot.FirmwareV015
+        return rv
 
     def __repr__(self):
         return "<{} {!r} ({!r})>".format(

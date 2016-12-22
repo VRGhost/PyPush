@@ -8,6 +8,8 @@ class PyPushException(Exception):
 class Timeout(PyPushException):
     """Timeout exception."""
 
+class StateChangeError(Timeout):
+    """This exception is raised when microbot's state is not as expected."""
 
 class ConnectionError(PyPushException):
     """Generic connection error."""

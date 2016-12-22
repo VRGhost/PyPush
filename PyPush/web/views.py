@@ -1,14 +1,17 @@
 import time
-from flask import render_template, Response
 
+import enum
+
+from flask import render_template, Response
 from flask_restful import Resource, Api, reqparse
 
 from PyPush.core import db
-from .const import MB_ACTIONS
+from .const import (
+    ComplexMbActions,
+    MbActions,
+)
 
 
-class CUSTOM_MB_ACTIONS(object):
-    PRESS = "press"
 
 
 class ActionChainConstructor(object):
@@ -30,10 +33,11 @@ class ActionChainConstructor(object):
     def append(self, action, args=(), kwargs=None):
         """Append new action to the end of the action chain."""
         action_args=(args, kwargs or {})
+        print action_args
 
         rec = db.Action(
             microbot_id=self._microbot.id,
-            action=action,
+            action=action.value,
             action_args=(args, kwargs or {}),
             retries_left=5 * 3, # the microbot will be disconnected every 5 retries.
         )
@@ -78,18 +82,28 @@ class MicrobotList(Resource):
 
             if not rec.is_paired:
                 status = "not_paired"
-                actions.append(MB_ACTIONS.pair)
+                actions.append(MbActions.pair)
             elif not rec.is_connected:
                 status = "not_connected"
             else:
                 status = "connected"
                 actions.extend([
-                    MB_ACTIONS.blink,
-                    MB_ACTIONS.extend,
-                    MB_ACTIONS.retract,
-                    MB_ACTIONS.calibrate,
-                    CUSTOM_MB_ACTIONS.PRESS,
+                    MbActions.blink,
+                    MbActions.extend,
+                    MbActions.retract,
+                    MbActions.calibrate,
+                    MbActions.change_button_mode,
+                    ComplexMbActions.press,
                 ])
+
+            sFirmwareVersion = None
+            if rec.firmware_version is not None:
+                sFirmwareVersion = ".".join(str(el)
+                    for el in rec.firmware_version)
+
+            bMode = None
+            if rec.button_mode is not None:
+                bMode = rec.button_mode.name
 
             out.append({
                 "id": rec.uuid,
@@ -99,9 +113,11 @@ class MicrobotList(Resource):
                 "battery": rec.battery,
                 "retracted": rec.retracted,
                 "calibration": rec.calibration,
+                "firmware_version": sFirmwareVersion,
+                "button_mode": bMode,
                 "last_seen": rec.last_seen.isoformat(),
                 "error": rec.last_error,
-                "actions": [str(el) for el in actions],
+                "actions": [el.value for el in actions],
             })
         return out
 
@@ -132,16 +148,19 @@ class Microbot(Resource):
         if mb.calibration != newCalibration:
             # Schedule calibration change
             chain = ActionChainConstructor(self.flaskUI, mbId)
-            chain.append(MB_ACTIONS.retract.key)
+            chain.append(WebMicrobotActions.retract.key)
             chain.append(
-                MB_ACTIONS.calibrate.key, args=(float(newCalibration), )).prev_action_delay = 2
-            chain.append(MB_ACTIONS.extend.key).prev_action_delay = 1.5
+                WebMicrobotActions.calibrate.key, args=(float(newCalibration), )).prev_action_delay = 2
+            chain.append(WebMicrobotActions.extend.key).prev_action_delay = 1.5
             chain.commit()
 
         return {
             "success": True,
         }
 
+ActionArgParser = reqparse.RequestParser()
+ActionArgParser.add_argument("args", action="append")
+ActionArgParser.add_argument("kwargs", action="append")
 
 class MicrobotAction(Resource):
 
@@ -151,15 +170,41 @@ class MicrobotAction(Resource):
 
     def get(self, mbId, action):
         chain = ActionChainConstructor(self.flaskUI, mbId)
-        if action in MB_ACTIONS:
-            # A primitive microbot action is called upon
-            chain.append(action)
-        elif action == CUSTOM_MB_ACTIONS.PRESS:
-            chain.append(MB_ACTIONS.extend.key)
-            # Add delay between extend an retract
-            chain.append(MB_ACTIONS.retract.key).prev_action_delay = 1.5
+        reqArgs = ActionArgParser.parse_args()
+        if reqArgs.args:
+            args = tuple(reqArgs.args)
         else:
-            raise NotImplementedError(action)
+            args = ()
+
+        if reqArgs.kwargs:
+            kwargs = dict(reqArgs.kwargs)
+        else:
+            kwargs = {}
+
+        metaAction = None
+        try:
+            metaAction = ComplexMbActions(action)
+        except ValueError:
+            pass
+
+        if metaAction is None:
+            try:
+                action = MbActions(action)
+            except ValueError:
+                raise NotImplementedError(action)
+            else:
+                chain.append(action, args, kwargs)
+        else:
+            # not none
+            if metaAction == ComplexMbActions.press:
+                actions = [MbActions.extend, MbActions.retract]
+            else:
+                raise NotImplementedError(metaAction)
+
+            for action in actions:
+                chAction = chain.append(action, args, kwargs)
+                # Add delay between action chain elements
+                chAction.prev_action_delay = 1.5
 
         ids = chain.commit()
 

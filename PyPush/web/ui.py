@@ -91,4 +91,8 @@ class FlaskUI(PyPush.core.iCore.iUI):
             self.flask.wsgi_app = DispatcherMiddleware(simple, {
                 self.flask.config["APPLICATION_ROOT"]: self.flask.wsgi_app
             })
-        self.flask.run(self.host, self.port, debug=self.debug)
+        # Add extra files
+        extra_files = []
+        for (root, _, files) in os.walk(os.path.join(const.PUSH_WEB_DIR, "templates")):
+            extra_files.extend(os.path.join(root, f) for f in files)
+        self.flask.run(self.host, self.port, debug=self.debug, extra_files=extra_files)

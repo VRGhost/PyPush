@@ -25,10 +25,12 @@ class PushHub(iLib.iHub):
         self._ble = ble.getLib(bleConfig)
         self._ble.onScan(self._onBleScan)
         self._gcMicrobots()
+        self._started = False
 
     def start(self):
         """Start daemon threads."""
         self._ble.start()
+        self._started = True
 
     def onMicrobot(self, onDiscovered, onLost):
         handles = []
@@ -45,6 +47,8 @@ class PushHub(iLib.iHub):
         return async.MultiHandle(handles)
 
     def getMicrobot(self, nameOrUid, timeout=0):
+        if not self._started:
+            raise exceptions.PyPushException("Microbot hub is not started.")
         key = nameOrUid.lower()
         isMyBot = lambda mb: key in (mb.getUID().lower(), mb.getName().lower())
 
@@ -86,8 +90,7 @@ class PushHub(iLib.iHub):
                 mb = microbot.MicrobotPush(self._ble, bleMicrobot, self._keyDb)
                 self._microbots[uid] = mb
             else:
-                assert self._microbots[uid].getLastSeen(
-                ) >= bleMicrobot.getLastSeen()
+                assert self._microbots[uid].getLastSeen() >= bleMicrobot.getLastSeen()
 
         if isNew:
             assert mb

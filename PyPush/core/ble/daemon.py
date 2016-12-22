@@ -8,7 +8,7 @@ import traceback
 
 from sqlalchemy import func, update
 
-from ..const import MB_ACTIONS
+from ..const import MbActions
 
 from PyPush.core import db
 
@@ -117,25 +117,30 @@ class ActionWriter(object):
             self.log.info("Microbot {!r} not found".format(uuid))
             return 30  # Retry in 30 seconds
 
-        if not mb.isConnected() and cmd != MB_ACTIONS.pair.key:
+        cmd = MbActions(cmd)
+
+        if not mb.isConnected() and cmd != MbActions.pair:
             return 60 # Retry in 1 minute if not connected
 
-        if mb.isConnected() and cmd == MB_ACTIONS.pair.key:
+        if mb.isConnected() and cmd == MbActions.pair:
             return True # Already paired
 
         try:
-            if cmd == MB_ACTIONS.pair.key:
+            if cmd == MbActions.pair:
                 for colour in mb.pair():
                     print colour
-            elif cmd == MB_ACTIONS.blink.key:
+            elif cmd == MbActions.blink:
                 mb.deviceBlink(30)
-            elif cmd == MB_ACTIONS.extend.key:
+            elif cmd == MbActions.extend:
                 mb.extend()
-            elif cmd == MB_ACTIONS.retract.key:
+            elif cmd == MbActions.retract:
                 mb.retract()
-            elif cmd == MB_ACTIONS.calibrate.key:
+            elif cmd == MbActions.calibrate:
                 assert len(args) == 1, (args, kwargs)
                 mb.setCalibration(args[0])
+            elif cmd == MbActions.change_button_mode:
+                assert len(args) == 1, (args, kwargs)
+                mb.setButtonMode(args[0])
             else:
                 raise Exception([cmd, args, kwargs])
         except Lib.exceptions.RemoteException:

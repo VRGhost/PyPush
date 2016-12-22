@@ -112,6 +112,8 @@ class MicrobotBluetoothService(object):
             rec.retracted = mGet(mb.isRetracted)
             rec.battery = mGet(mb.getBatteryLevel)
             rec.calibration = mGet(mb.getCalibration)
+            rec.button_mode = mGet(mb.getButtonMode)
+            rec.firmware_version = mGet(mb.getFirmwareVersion)
 
             s.commit()
 
