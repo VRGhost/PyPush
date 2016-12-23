@@ -186,11 +186,6 @@ class BgConnection(iApi.iConnection):
                 self._log.info("BgConnection {} closed.".format(self))
         self._bleConn = None
 
-    def getAllServices(self):
-        assert self.isActive()
-        return [self._humanServiceName(el)
-                for el in self._bleConn.get_services()]
-
     @ActiveApi
     def readAllCharacteristics(self):
         rv = {}

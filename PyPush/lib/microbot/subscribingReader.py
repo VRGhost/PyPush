@@ -4,7 +4,9 @@
 """
 import logging
 
+
 from .. import async
+from ..ble import exceptions as bleExceptions
 
 class SubscribingReader(object):
     """A handler object that auto-subscribes to notifications on the characteristics being read.

@@ -1,0 +1,5 @@
+# apt-get install libglib2.0-dev libusb-dev libdbus-1-dev libudev-dev libical-dev libreadline-dev libboost-all-dev
+pybluez
+
+#gattlib
+https://bitbucket.org/vrghost/pygattlib/get/tip.zip#egg=gattlib  # Waiting for the next release of the gattlib (> 0.20150805). The current official release provides no means to parse BLE advertisment data

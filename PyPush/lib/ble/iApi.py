@@ -53,10 +53,6 @@ class iConnection(object):
         """Returns <iMicrobotPush> this connection is attached to."""
 
     @abstractmethod
-    def getAllServices(self):
-        """Returns all service IDs available for this microbot."""
-
-    @abstractmethod
     def readAllCharacteristics(self):
         """Returns dict of all Service id -> CharacteristicId-> Value for the `serviceId`.
 

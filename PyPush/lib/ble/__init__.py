@@ -15,11 +15,17 @@ def getBgApi(config):
     from . import bgapi
     return bgapi.API(config)
 
+def getPyBluezApi(config):
+    from . import bluez
+    return bluez.API(config)
+
 
 def getLib(config):
     """Automatically detect & deploy one of supported Python BLE libs."""
     if config["driver"] == "bgapi":
         rv = getBgApi(config)
+    elif config["driver"] == "pybluez":
+        rv = getPyBluezApi(config)
     else:
         raise NotImplementedError(config)
 
