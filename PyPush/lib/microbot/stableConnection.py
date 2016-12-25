@@ -3,6 +3,8 @@
 import logging
 import threading
 
+from .. import exceptions
+
 class StableAuthorisedConnection(object):
     """Auto-reconnecting BLE connection.
 
