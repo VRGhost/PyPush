@@ -144,10 +144,10 @@ class Microbot(Resource):
         if mb.calibration != newCalibration:
             # Schedule calibration change
             chain = ActionChainConstructor(self.flaskUI, mbId)
-            chain.append(WebMicrobotActions.retract.key)
+            chain.append(MbActions.retract)
             chain.append(
-                WebMicrobotActions.calibrate.key, args=(float(newCalibration), )).prev_action_delay = 2
-            chain.append(WebMicrobotActions.extend.key).prev_action_delay = 1.5
+                MbActions.calibrate, args=(float(newCalibration), )).prev_action_delay = 2
+            chain.append(MbActions.extend).prev_action_delay = 1.5
             chain.commit()
 
         return {

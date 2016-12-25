@@ -3,6 +3,7 @@
 
 """
 import logging
+import time
 
 
 from .. import async
