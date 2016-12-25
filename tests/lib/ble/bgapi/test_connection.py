@@ -2,6 +2,7 @@ import collections
 import time
 import mock
 import pytest
+import itertools
 
 import Queue
 
@@ -13,7 +14,7 @@ import PyPush.lib.ble.bgapi.connection as ConMod
 
 STR_TO_HEX = "PyPush.lib.ble.bgapi.byteOrder.nStrToHHex"
 
-ServiceMock = collections.namedtuple("ServiceMock", ["uuid"])
+ServiceMock = collections.namedtuple("ServiceMock", ["uuid", "start_handle", "end_handle"])
 CharacteristicMock = collections.namedtuple(
     "CharacteristicMock", ["uuid", "handle"])
 
@@ -28,37 +29,30 @@ def test_connection_open():
     ble = mock.MagicMock()  # BlueGiga BLE Client object.
     bleConn = ble.getChildLock.return_value
 
-    CHAR_MEMORY = {
-        "ch": [],
-        "idx": 0
+    _mkChar = lambda idx: CharacteristicMock("CHAR:{}".format(idx), idx)
+
+    S1 = ServiceMock("SER_1", 0, 2)
+    S2 = ServiceMock("SER_2", 3, 4)
+    S3 = ServiceMock("SER_3", 10, 20)
+    CHARS = {
+        S1: [
+            _mkChar(0),
+        ],
+        S2: [
+            _mkChar(3),
+            _mkChar(4),
+        ],
+        S3: [
+            _mkChar(10),
+            _mkChar(15),
+            _mkChar(19),
+        ],
     }
-
-
-
-    def _genNewChars():
-        CHAR_MEMORY["idx"] += 1
-        if CHAR_MEMORY["idx"] % 2 == 1:
-            # Ignore odd calls
-            return tuple(CHAR_MEMORY["ch"])
-
-        # each sucessive call generates one more char than the previous one
-        start_idx = len(CHAR_MEMORY["ch"])
-        end_idx = start_idx + (start_idx + 1)
-        for idx in xrange(start_idx, end_idx):
-            sIdx = str(idx)
-            char = CharacteristicMock(
-                "CHAR:" + sIdx, "HANDLE:" + sIdx)
-            CHAR_MEMORY["ch"].append(char)
-        return tuple(CHAR_MEMORY["ch"])
-
-    bleConn.get_characteristics.side_effect = _genNewChars
-
-    S1 = ServiceMock("SER_1")
-    S2 = ServiceMock("SER_2")
-    S3 = ServiceMock("SER_3")
 
     ble.getChildLock.return_value.get_services.return_value = \
         ALL_SERVICES = (S1, S2, S3)
+    ble.getChildLock.return_value.get_characteristics.return_value = \
+        tuple(itertools.chain(*CHARS.values()))
 
     conn = ConMod.BgConnection(mb, ble)
     conn._open()
@@ -68,25 +62,14 @@ def test_connection_open():
     ble.connect.assert_called_once_with(mb.getApiTarget(), timeout=10)
     ble.getChildLock.assert_called_once_with(ble.connect.return_value)
 
-    bleConn.read_by_group_type.assert_called_once()
-
-    assert bleConn.find_information.call_count == 0, "Lazy load"
-    conn._findCharacteristic("SER_1", "CHAR:0")
-    conn._findCharacteristic("SER_2", "CHAR:1")
-    conn._findCharacteristic("SER_3", "CHAR:3")
-
-
-    assert bleConn.find_information.call_count == len(ALL_SERVICES)
-    assert bleConn.get_characteristics.call_count == len(ALL_SERVICES) * 2
-    assert bleConn.read_by_type.call_count == len(ALL_SERVICES) * 2
 
     # test internal characteristic memory
     mem = conn._serviceToCharacteristics
     assert set(mem.keys()) == set(["SER_1", "SER_2", "SER_3"])
     assert set(ch.uuid for ch in mem["SER_1"]) == set(["CHAR:0"])
-    assert set(ch.uuid for ch in mem["SER_2"]) == set(["CHAR:1", "CHAR:2"])
+    assert set(ch.uuid for ch in mem["SER_2"]) == set(["CHAR:3", "CHAR:4"])
     assert set(ch.uuid for ch in mem["SER_3"]) == set(
-        ["CHAR:3", "CHAR:4", "CHAR:5", "CHAR:6"])
+        ["CHAR:10", "CHAR:15", "CHAR:19"])
 
     # test _findService
     assert conn._findService("SER_1") == S1, conn._findService("SER_1")
@@ -97,9 +80,9 @@ def test_connection_open():
 
     # test _finCharacteristics
     assert conn._findCharacteristic(
-        "SER_1", "CHAR:0").gatt == CHAR_MEMORY["ch"][0]
+        "SER_1", "CHAR:0").gatt == CHARS[S1][0]
     assert conn._findCharacteristic(
-        "SER_3", "CHAR:4").gatt == CHAR_MEMORY["ch"][4]
+        "SER_3", "CHAR:15").gatt == CHARS[S3][1]
 
     with pytest.raises(KeyError):
         conn._findCharacteristic("SER_0", "CHAR:0")
@@ -118,17 +101,13 @@ def get_mocked_connection():
     mb = mock.MagicMock()  # Microbot object
     ble = mock.MagicMock()  # BlueGiga BLE Client object.
     bleConn = ble.getChildLock.return_value
-    Service = ServiceMock("SERV")
+    Service = ServiceMock("SERV", 0, 100)
     Char = mock.Mock()
     Char.uuid = "CHAR"
     Char.handle = 10
 
-    def _charRvIter():
-        yield ()
-        yield (Char, )
-
     ble.getChildLock.return_value.get_services.return_value = (Service, )
-    bleConn.get_characteristics.side_effect = _charRvIter().next
+    bleConn.get_characteristics.return_value = (Char, )
 
     bleConn.reset_mock()
 
