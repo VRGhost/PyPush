@@ -191,7 +191,7 @@ class BgConnection(iApi.iConnection):
         rv = {}
         for srv in self._bleConn.get_services():
             rv[self._humanServiceName(srv)] = srvData = {}
-            characteristics = self._lazyLoadCharacteristics(self._bleConn, srv.uuid)
+            characteristics = self._getCharacteristics(self._bleConn, srv.uuid)
             for char in characteristics:
                 if char.gatt.is_readable():
                     self._bleConn.read_by_handle(char.gatt.handle + 1)
@@ -260,7 +260,7 @@ class BgConnection(iApi.iConnection):
     def _findCharacteristic(self, serviceUUID, charUUID):
         srv_uuid = self._findService(serviceUUID).uuid
         conn = self._bleConn
-        for char in self._lazyLoadCharacteristics(conn, srv_uuid):
+        for char in self._getCharacteristics(conn, srv_uuid):
             if char.human_uuid == charUUID:
                 return char
         # else
@@ -281,10 +281,30 @@ class BgConnection(iApi.iConnection):
             conn.set_min_connection_interval(0.5) # min 0.5 delay for the conn interval
             conn.read_by_group_type(
                     GATTService.PRIMARY_SERVICE_UUID, timeout=20)
+                    ## Read all service data at once
+            conn.find_all_information(timeout=20)
+
+            # Read characteristics
+            for serviceType in (
+                GATTCharacteristic.CHARACTERISTIC_UUID,
+                GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
+            ):
+                conn.read_all_characteristics_by_type(serviceType, timeout=20)
+
+            # Assign characteristics to the srvices
+            services = conn.get_services()
+            characteristics = conn.get_characteristics()
+            for service in services:
+                service_chars = [ch for ch in characteristics
+                    if service.start_handle <= ch.handle <= service.end_handle]
+                self._serviceToCharacteristics[service.uuid] = [
+                    BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))
+                    for ch in service_chars
+                ]
 
         return conn
 
-    def _lazyLoadCharacteristics(self, connection, serviceUUID):
+    def _getCharacteristics(self, connection, serviceUUID):
         """Load information about a particular service."""
         try:
             return self._serviceToCharacteristics[serviceUUID]
@@ -300,21 +320,9 @@ class BgConnection(iApi.iConnection):
         connection.find_information(service=service, timeout=20)
         prevHandles = frozenset(el.handle for el in connection.get_characteristics())
 
-        for serviceType in (
-            GATTCharacteristic.CHARACTERISTIC_UUID,
-            GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
-        ):
-            try:
-                connection.read_by_type(service, serviceType, timeout=20)
-            except RemoteError as err:
-                if err.code == 0x040A:
-                    # Attribute not found. Seems to be occasional
-                    # occurence with microbots.
-                    pass
-                else:
-                    raise
 
-        time.sleep(2) # Give microbot time to cool down a bit
+
+        
 
         self._serviceToCharacteristics[service.uuid] = rv = tuple(
             BgCharacteristic(ch.uuid, ch, byteOrder.nStrToHHex(ch.uuid))

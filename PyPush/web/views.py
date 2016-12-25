@@ -11,9 +11,6 @@ from .const import (
     MbActions,
 )
 
-
-
-
 class ActionChainConstructor(object):
     """This object helps to construct BLE action chain."""
 

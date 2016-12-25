@@ -6,8 +6,8 @@ import subprocess
 def populate_arg_parser(parser):
     parser.add_argument(
         "--ble_driver",
-        default="bgapi",
-        choices=("bgapi", "pybluez"),
+        default="bluegiga",
+        choices=("bluegiga", "pybluez"),
         help="Bluetooth Low Energy driver."
     )
     parser.add_argument(
@@ -22,10 +22,11 @@ def create(debug, pairDb, args):
     import PyPush.lib
     driver = args.ble_driver
 
-    if driver == "bgapi":
+    if driver == "bluegiga":
         devs = glob.glob(args.ble_device)
         assert len(devs) == 1, devs
         dev = devs[0]
+        driver = "bgapi"
     elif driver == "pybluez":
         dev = args.ble_device
         out = subprocess.check_output(["hcitool", "dev"])

@@ -13,9 +13,29 @@ This project is planned to contain three separate elements:
 
 You can find a dump of my current understanding of the Microbot's low-level Bluetooth API [here](docs/microbot_ble_api.md)
 
+## Running
+
+### Bgapi
+```bash
+$ cd "${PY_PUSH_CHECKOUT_DIR}"
+$ pip install -r ./requirements/prod.txt
+$ ./bin/serve.sh --ble_driver bluegiga --ble_device /dev/tty.usbmodem1 web_ui
+```
+
+### PyBlueZ
+```bash
+$ cd "${PY_PUSH_CHECKOUT_DIR}"
+$ pip install -r ./requirements/prod.txt
+$ pip install -r ./requirements/bluez.txt
+$ ./bin/serve.sh --ble_driver pybluez --ble_device hci0  web_ui
+```
+
 ## Microbot Push Library
 
-Although the library is intended to operate with any BLE hardware or stack, only [Bluegiga](https://www.silabs.com/products/wireless/bluetooth/bluetooth-smart-modules/Pages/bled112-bluetooth-smart-dongle.aspx) stack is supported for the moment.
+At the moment, the library supports two [BLE](https://en.wikipedia.org/wiki/Bluetooth_low_energy) stacks:
+  * [Bluegiga](https://www.silabs.com/products/wireless/bluetooth/bluetooth-smart-modules/Pages/bled112-bluetooth-smart-dongle.aspx): available for all platforms that support USB COM devices, does not require root access, does require purchase of a $15 piece of hardware
+  * PyBlueZ (custom fork): Linux-only, requires elevation to root to run. The implementation is more of proof-of-concept, BLE operations are somewhat unstable (causing I/O delays). Don't forget to deploy (PyBlueZ requirements)[./requirements/bluez.txt] for this mode.
+
 
 [Microbot Push Library Documentation](docs/PyPush_lib.md)
 
