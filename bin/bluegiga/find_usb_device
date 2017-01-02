@@ -1,0 +1,13 @@
+#! /bin/bash -e
+# This script prints name of the USB device for the bluegiga token
+
+for DEV in /sys/bus/usb/devices/*; do
+    if [[ ! -f "${DEV}/idVendor" || ! -f "${DEV}/idProduct" ]]; then
+       continue
+    fi
+    ID_VENDOR=$(cat "${DEV}/idVendor")
+    ID_PRODUCT=$(cat "${DEV}/idProduct")
+    if [[ "${ID_VENDOR}" == "2458" && "${ID_PRODUCT}" == "0001" ]]; then
+        echo $(basename "${DEV}")
+    fi
+done
