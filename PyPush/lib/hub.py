@@ -100,8 +100,6 @@ class PushHub(iLib.iHub):
             if isNew:
                 mb = microbot.MicrobotPush(self._ble, bleMicrobot, self._keyDb)
                 self._microbots[uid] = mb
-            else:
-                assert self._microbots[uid].getLastSeen() >= bleMicrobot.getLastSeen()
 
         if isNew:
             assert mb

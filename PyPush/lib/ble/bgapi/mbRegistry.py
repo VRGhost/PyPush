@@ -14,11 +14,11 @@ from . import byteOrder
 
 class BgMicrobot(iApi.iMicrobotPush):
 
-    def __init__(self, binAddr, name):
+    def __init__(self, binAddr, name, lastSeen):
         """`binAddr` is binary string representing this microbot."""
         self._name = name
         self._addr = binAddr
-        self._lastSeen = time.time()
+        self._lastSeen = lastSeen
 
     def getName(self):
         return self._name
@@ -70,7 +70,7 @@ class MicrobotRegistry(object):
 
     def createMicrobotFromUUID(self, uuid):
         name = "Hidden microbot ({:02X}:{:02X})".format(*byteOrder.nStrToHBytes(uuid[:2]))
-        rv = BgMicrobot(uuid, name)
+        rv = BgMicrobot(uuid, name, 0)
         return rv
 
     def onScanEvent(self, evt):
@@ -107,7 +107,7 @@ class MicrobotRegistry(object):
                     # This is microbot's real name
                     name = data[2:]
 
-        rv = BgMicrobot(addr, name)
+        rv = BgMicrobot(addr, name, time.time())
         rv._setLastSeen(evt.created)
         return rv
 
