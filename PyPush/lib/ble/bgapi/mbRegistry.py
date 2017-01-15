@@ -14,11 +14,10 @@ from . import byteOrder
 
 class BgMicrobot(iApi.iMicrobotPush):
 
-    def __init__(self, binAddr, name, apiTarget):
+    def __init__(self, binAddr, name):
         """`binAddr` is binary string representing this microbot."""
         self._name = name
         self._addr = binAddr
-        self._apiTrg = apiTarget
         self._lastSeen = time.time()
 
     def getName(self):
@@ -27,15 +26,14 @@ class BgMicrobot(iApi.iMicrobotPush):
     def getLastSeen(self):
         return datetime.datetime.fromtimestamp(self._lastSeen)
 
+    def getBinaryUUID(self):
+        return self._addr
+
     def getUID(self):
         return self.getNiceAddr()
 
     def getNiceAddr(self):
         return byteOrder.nStrToHHex(self._addr, sep=":")
-
-    def getApiTarget(self):
-        """Returns ble `target` object that is to be used for bgapi purposes."""
-        return self._apiTrg
 
     def _setLastSeen(self, time):
         assert isinstance(time, float), time
@@ -46,7 +44,6 @@ class BgMicrobot(iApi.iMicrobotPush):
         assert self == other, (self, other)
         self._lastSeen = max(self._lastSeen, other._lastSeen)
         self._name = other._name
-        self._apiTrg = other._apiTrg
 
     def __eq__(self, other):
         return self._addr == other._addr
@@ -70,6 +67,11 @@ class MicrobotRegistry(object):
     def onScanCallback(self, callback):
         assert callable(callback), callback
         self._scanCallbacks.append(callback)
+
+    def createMicrobotFromUUID(self, uuid):
+        name = "Hidden microbot ({:02X}:{:02X})".format(*byteOrder.nStrToHBytes(uuid[:2]))
+        rv = BgMicrobot(uuid, name)
+        return rv
 
     def onScanEvent(self, evt):
         """This method is called when microbot is discovered via BLE scan."""
@@ -105,7 +107,7 @@ class MicrobotRegistry(object):
                     # This is microbot's real name
                     name = data[2:]
 
-        rv = BgMicrobot(addr, name, evt)
+        rv = BgMicrobot(addr, name)
         rv._setLastSeen(evt.created)
         return rv
 

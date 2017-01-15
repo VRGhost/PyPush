@@ -76,6 +76,17 @@ class PushHub(iLib.iHub):
         finally:
             handle.cancel()
 
+    def createMicrobotFromUUID(self, uuid):
+        with self._mutex:
+            try:
+                rv = self._microbots[uuid]
+            except KeyError:
+                # Microbot does not exist, create the object
+                _bleMb = self._ble.createMicrobotFromUUID(uuid)
+                rv = microbot.MicrobotPush(self._ble, _bleMb, self._keyDb)
+                self._microbots[_bleMb.getUID()] = rv 
+        return rv
+
     def getAllMicrobots(self):
         return self._microbots.values()
 

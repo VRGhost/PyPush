@@ -54,6 +54,13 @@ class iHub(object):
         """
 
     @abstractmethod
+    def createMicrobotFromUUID(self, uid):
+        """Creates a handle for a microbot unknown to the PyPush.
+
+        Caller is responsible for providing existing UUID here.
+        """
+
+    @abstractmethod
     def getAllMicrobots(self):
         """Returns an interable of all microbots currently known to the system."""
 

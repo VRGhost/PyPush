@@ -6,7 +6,7 @@ import logging
 import threading
 import traceback
 
-from sqlalchemy import func, update
+from sqlalchemy import func, update, and_
 
 from ..const import MbActions
 
@@ -30,8 +30,8 @@ class ActionWriter(object):
         chainsToRemove = []
         commandedThisTurn = set()
 
-        delayedBy = lambda secs: datetime.datetime.utcnow(
-        ) + datetime.timedelta(seconds=max(secs, 1))
+        delayedBy = lambda secs: datetime.datetime.utcnow() \
+            + datetime.timedelta(seconds=max(secs, 1))
 
         for action in session.query(db.Action).filter(
                 db.Action.prev_action == None,
@@ -158,25 +158,45 @@ class MicrobotReconnector(object):
     """This object reconnects disconnected microbots."""
 
     RECONNECT_DELAY = 60 # seconds
+    MB_FROM_DB_RECONNECT_DELAY = 5 * 60 # seconds
     log = logging.getLogger(__name__)
 
     def __init__(self, service):
         self.service = service
         self.minReconnectTime = collections.defaultdict(lambda: 0) # UID -> min time.time
 
-    def step(self):
+    def step(self, session):
         """Reconnect all previously disconnected microbots."""
+        knownUids = set(["FAKE_UUID_PYPUSH"]) # suppresses sqlalchemy warning
+        now = time.time()
+
         for mb in self.service.getBleMicrobots():
             if (not mb.isConnected()) and mb.isPaired():
                 uid = mb.getUID()
-                if self.minReconnectTime[uid] < time.time():
+                knownUids.add(uid)
+                if self.minReconnectTime[uid] < now:
                     self.log.info("Connecting to {!r}".format(uid))
                     try:
                         mb.connect()
                     except Lib.exceptions.Timeout:
                         self.log.exception("Timeout while reconnecting")
                     finally:
-                        self.minReconnectTime[uid] = time.time() + self.RECONNECT_DELAY
+                        self.minReconnectTime[uid] = now + self.RECONNECT_DELAY
+
+        for dbMb in session.query(db.Microbot).filter(
+            db.Microbot.is_paired == True,
+            ~db.Microbot.uuid.in_(knownUids)
+        ):
+            uuid = dbMb.uuid
+            if self.minReconnectTime[uuid] < now:
+                self.log.info("Reconnecting to hidden {!r}".format(uuid))
+                mb = self.service.getHiddenMicrobot(uuid)
+                try:
+                    mb.connect()
+                except Lib.exceptions.Timeout:
+                    self.log.exception("Timeout while reconnecting")
+                finally:
+                    self.minReconnectTime[uuid] = now + self.MB_FROM_DB_RECONNECT_DELAY
 
 class BLEDaemon(object):
 
@@ -209,7 +229,7 @@ class BLEDaemon(object):
         while self.running:
             with self.service.sessionCtx() as session:
                 try:
-                    self.reconnector.step()
+                    self.reconnector.step(session)
                 except Exception:
                     self.log.exception("Error reconnecting to a microbot.")
 

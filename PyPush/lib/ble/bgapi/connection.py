@@ -24,6 +24,10 @@ from .. import (
 
 from . import byteOrder
 
+FakeConnectionHandle = collections.namedtuple("FakeConnectionHandle",
+    ["sender", "address_type"]
+)
+
 BgCharacteristic = collections.namedtuple(
     "BgCharacteristic", ["uuid", "gatt", "human_uuid"])
 
@@ -252,7 +256,11 @@ class BgConnection(iApi.iConnection):
         """Initiate the connection."""
         assert not self.isActive()
         with self.transaction():
-            conn = self._ble.connect(self._mb.getApiTarget(), timeout=10)
+            conn = self._ble.connect(
+                FakeConnectionHandle(
+                    sender=self._mb.getBinaryUUID(),
+                    address_type=1,
+                ), timeout=10)
             conn = self._ble.getChildLock(conn)
             self._bleConn = self._initBleConnection(conn)
         self._log.info("BgConnection {} opened.".format(self))

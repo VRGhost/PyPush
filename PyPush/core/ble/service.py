@@ -56,6 +56,14 @@ class MicrobotBluetoothService(object):
                 return mb
         raise KeyError(nameOrId)
 
+    def getHiddenMicrobot(self, uuid):
+        """Create a BLE object for the hiffen microbot."""
+        rv = self._hub.createMicrobotFromUUID(uuid)
+        key = rv.getUID()
+        self._microbots[key] = rv
+        rv.onStateChange(lambda mb: self._onMbStateChange(key, mb))
+        return rv
+
     def _onMbFound(self, microbot):
         key = microbot.getUID()
         self._microbots[key] = microbot

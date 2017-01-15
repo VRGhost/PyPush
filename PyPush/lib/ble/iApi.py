@@ -26,6 +26,13 @@ class iApi(object):
         """
 
     @abstractmethod
+    def createMicrobotFromUUID(self, uuid):
+        """Create microbot object from an UUID.
+        
+            UUID is a human-readable form of the UUID
+        """
+
+    @abstractmethod
     def getUID(self):
         """Return UUID this host is using to access BLE."""
 

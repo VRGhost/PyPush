@@ -18,6 +18,7 @@ class API(iApi.iApi):
         """Config must be a dictionary with "device" key (specifying tty of the bluegiga token)"""
         self._microbotDb = mbRegistry.MicrobotRegistry(maxAge=60 * 60)
         self._config = config
+        self._running = False
 
     def start(self):
         config = self._config
@@ -33,9 +34,16 @@ class API(iApi.iApi):
         _ble._api.ble_cmd_hardware_set_txpower(15)
         self._scanner = scanner.Scanner(
             self._ble, self._microbotDb.onScanEvent)
+        self._running = True
 
     def onScan(self, callback):
         return self._microbotDb.onScanCallback(callback)
+
+    def createMicrobotFromUUID(self, uuid):
+        assert self._running
+        bParts = [int(el, 16) for el in uuid.split(":")]
+        nUuid = byteOrder.hBytesToNStr(bParts)
+        return self._microbotDb.createMicrobotFromUUID(nUuid)
 
     def connect(self, microbot):
         """Connect to the microbot."""
