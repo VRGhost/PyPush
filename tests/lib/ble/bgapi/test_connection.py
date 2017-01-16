@@ -58,9 +58,9 @@ def test_connection_open():
     conn._open()
 
 
-    mb.getApiTarget.assert_called_once()
-    ble.connect.assert_called_once_with(mb.getApiTarget(), timeout=10)
-    ble.getChildLock.assert_called_once_with(ble.connect.return_value)
+    mb.getBinaryUUID.assert_called_once()
+    ble.connect.assert_called_once()
+    ble.getChildLock.assert_called_once()
 
 
     # test internal characteristic memory
