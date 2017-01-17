@@ -6,7 +6,7 @@ import logging
 import threading
 import traceback
 
-from sqlalchemy import func, update, and_
+from sqlalchemy import func, update, or_
 
 from ..const import MbActions
 
@@ -171,9 +171,9 @@ class MicrobotReconnector(object):
         now = time.time()
 
         for mb in self.service.getBleMicrobots():
+            uid = mb.getUID()
+            knownUids.add(uid)
             if (not mb.isConnected()) and mb.isPaired():
-                uid = mb.getUID()
-                knownUids.add(uid)
                 if self.minReconnectTime[uid] < now:
                     self.log.info("Connecting to {!r}".format(uid))
                     try:
@@ -183,9 +183,15 @@ class MicrobotReconnector(object):
                     finally:
                         self.minReconnectTime[uid] = now + self.RECONNECT_DELAY
 
+        invisibleMbDelay = datetime.datetime.now() - datetime.timedelta(hours=1)
+
         for dbMb in session.query(db.Microbot).filter(
             db.Microbot.is_paired == True,
-            ~db.Microbot.uuid.in_(knownUids)
+            ~db.Microbot.uuid.in_(knownUids),
+            or_(
+                db.Microbot.is_connected == False,
+                db.Microbot.last_seen < invisibleMbDelay,
+            )
         ):
             uuid = dbMb.uuid
             if self.minReconnectTime[uuid] < now:
