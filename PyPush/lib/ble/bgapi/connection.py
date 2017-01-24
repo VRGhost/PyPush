@@ -260,7 +260,9 @@ class BgConnection(iApi.iConnection):
                 FakeConnectionHandle(
                     sender=self._mb.getBinaryUUID(),
                     address_type=1,
-                ), timeout=10)
+                ),
+                timeout=20
+            )
             conn = self._ble.getChildLock(conn)
             self._bleConn = self._initBleConnection(conn)
         self._log.info("BgConnection {} opened.".format(self))

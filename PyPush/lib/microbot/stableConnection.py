@@ -2,6 +2,7 @@
 
 import logging
 import threading
+import time
 
 from .. import exceptions
 
@@ -38,11 +39,11 @@ class StableAuthorisedConnection(object):
                     retry += 1
             except Exception:
                 self.log.exception("Error restoring BLE connection")
-                self._active = False
+                self.close()
 
             if not self._conn.isActive():
                 # Exceeded retry count
-                self._active = False
+                self.close()
                 raise exceptions.ConnectionError("Connection failed")
         return self._conn
 
@@ -52,8 +53,7 @@ class StableAuthorisedConnection(object):
     def close(self):
         """Close the connection."""
         with self._mutex:
-            if self._conn.isActive():
-                self._conn.close()
+            self._conn.close()
             self._active = False
 
     def _restoreConnection(self):

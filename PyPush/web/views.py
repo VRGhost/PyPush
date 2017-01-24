@@ -1,4 +1,5 @@
 import time
+import json
 
 import enum
 
@@ -226,6 +227,13 @@ class FlaskRoutes(object):
             'index.html',
         )
 
+    def ping(self):
+        rv = json.dumps({
+            "success": True,
+            "response": "pong",
+        })
+        return Response(rv, mimetype='application/json')
+
 def create_views(flaskUI):
     """Assign Web views to the flask app."""
     restful = flaskUI.restful
@@ -237,7 +245,7 @@ def create_views(flaskUI):
     flask.route("/")(routes.index)
     flask.route("/info/action_log.csv")(routes.get_action_log)
 
-
+    flask.route("/api/ping")(routes.ping)
     restful.add_resource(MicrobotList, '/api/microbots', resource_class_kwargs=kw)
     restful.add_resource(Microbot, '/api/microbots/<string:mbId>', resource_class_kwargs=kw)
     restful.add_resource(

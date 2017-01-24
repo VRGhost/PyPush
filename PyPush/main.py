@@ -52,6 +52,9 @@ def setup_logging(debug):
     root_logger.addHandler(rotHandler)
     root_logger.addHandler(stdoutHandler)
 
+    # Silence the BGAPI logger
+    logging.getLogger("bgapi").setLevel(logging.INFO)
+
 def create_app(args):
     """Create the PyPush application object."""
     import PyPush
