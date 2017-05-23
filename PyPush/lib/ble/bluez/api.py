@@ -31,7 +31,7 @@ class API(iApi.iApi):
         assert self._running
         
         nUuid = byteOrder.hBytesToNStr(bParts)
-        eturn self._microbotDb.createMicrobotFromUUID(nUuid)
+        return self._microbotDb.createMicrobotFromUUID(nUuid)
 	
     def connect(self, microbot):
         conn = connection.Connection(self.devName, microbot, self._mutex)
