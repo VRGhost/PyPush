@@ -26,7 +26,13 @@ class API(iApi.iApi):
 
     def onScan(self, callback):
         return self._scanner.onScan.subscribe(callback)
-
+    
+    def createMicrobotFromUUID(self, uuid):
+        assert self._running
+        
+        nUuid = byteOrder.hBytesToNStr(bParts)
+        return self._microbotDb.createMicrobotFromUUID(nUuid)
+	
     def connect(self, microbot):
         conn = connection.Connection(self.devName, microbot, self._mutex)
         conn._open()
