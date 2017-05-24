@@ -1,4 +1,4 @@
-# apt-get install libglib2.0-dev libusb-dev libdbus-1-dev libudev-dev libical-dev libreadline-dev libboost-all-dev
+# apt-get install libglib2.0-dev libusb-dev libdbus-1-dev libudev-dev libical-dev libreadline-dev libboost-all-dev libboost-python-dev
 pybluez
 
 #gattlib
