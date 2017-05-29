@@ -261,7 +261,7 @@ class BgConnection(iApi.iConnection):
                     sender=self._mb.getBinaryUUID(),
                     address_type=1,
                 ),
-                timeout=20
+                timeout=120
             )
             conn = self._ble.getChildLock(conn)
             self._bleConn = self._initBleConnection(conn)
@@ -288,18 +288,18 @@ class BgConnection(iApi.iConnection):
     def _initBleConnection(self, conn):
         """This method initialises internal state of the BLE connection by populating its internal dictionaries."""
         with conn.transaction():
-            conn.set_min_connection_interval(0.5) # min 0.5 delay for the conn interval
+            conn.set_min_connection_interval(5) # min 5s delay for the conn interval
             conn.read_by_group_type(
-                    GATTService.PRIMARY_SERVICE_UUID, timeout=20)
+                    GATTService.PRIMARY_SERVICE_UUID, timeout=120)
                     ## Read all service data at once
-            conn.find_all_information(timeout=20)
+            conn.find_all_information(timeout=120)
 
             # Read characteristics
             for serviceType in (
                 GATTCharacteristic.CHARACTERISTIC_UUID,
                 GATTCharacteristic.CLIENT_CHARACTERISTIC_CONFIG,
             ):
-                conn.read_all_characteristics_by_type(serviceType, timeout=20)
+                conn.read_all_characteristics_by_type(serviceType, timeout=120)
 
             # Assign characteristics to the srvices
             services = conn.get_services()

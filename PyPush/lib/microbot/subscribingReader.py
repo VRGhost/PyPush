@@ -68,7 +68,7 @@ class SubscribingReader(object):
                         self._values[key] = rv
         except bleExceptions.Timeout:
             self.log.exception("BLE timeout")
-            raise exceptions.Timeout("Read timeout")
+            raise bleExceptions.Timeout("Read timeout")
         return rv
 
     def _readUnsupported(self, conn, service, char):

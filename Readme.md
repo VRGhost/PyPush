@@ -43,3 +43,14 @@ At the moment, the library supports two [BLE](https://en.wikipedia.org/wiki/Blue
 ## Web UI
 
 ![UI Screenshot](./docs/img/web_ui_1.png)
+
+# Changelog
+
+## 29 May 2017
+
+Code:
+	* Fixed missing `createMicrobotFromUUID` method in the PyBlueZ stack (kudos to @javaftper)
+
+Docker container:
+	* Now has embedded PyBlueZ support
+	* Updated to the latest revision of code

@@ -4,16 +4,25 @@ ENV PORT=5000
 ENV DRIVER="bluegiga"
 ENV DEVICE="/dev/ttyACM*"
 ENV APPLICATION_ROOT="/microbots"
+ENV HOST_MOUNDED_DIR="/usr/src/PyPush/host_mounted"
+
+RUN apt-get update
+RUN apt-get install -y libglib2.0-dev libusb-dev libdbus-1-dev libudev-dev libical-dev libreadline-dev libboost-all-dev libboost-python-dev libbluetooth-dev
+RUN apt-get clean
 
 RUN mkdir -p /usr/src
-COPY ./ /usr/src/PyPush
+WORKDIR /usr/src
+COPY ./requirements/ /usr/src/requirements
 
-RUN mkdir /usr/src/PyPush/host_mounted
-VOLUME [ "/usr/src/PyPush/host_mounted" ]
+RUN pip install --no-cache-dir -r requirements/prod.txt
+RUN pip install --no-cache-dir -r requirements/bluez.txt
+
 WORKDIR /usr/src/PyPush
-
+COPY ./ /usr/src/PyPush
 RUN rm -rf .git
-RUN pip install --no-cache-dir -r requirements.txt
+
+RUN mkdir "${HOST_MOUNDED_DIR}"
+VOLUME [ "${HOST_MOUNDED_DIR}" ]
 
 EXPOSE $PORT
-CMD [ "sh", "-c", "./bin/serve.sh --ble_driver \"${DRIVER}\" --ble_device \"${DEVICE}\" --db_uri \"sqlite:////usr/src/PyPush/host_mounted/py_push_db.sqlite\" web_ui --host 0.0.0.0 --port \"${PORT}\"  --application_root \"${APPLICATION_ROOT}\" " ]
+CMD [ "sh", "-c", "./bin/docker/serve.sh" ]

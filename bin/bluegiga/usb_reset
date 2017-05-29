@@ -1,0 +1,17 @@
+#!/usr/bin/env python
+import os
+import sys
+from subprocess import Popen, PIPE
+import fcntl
+
+
+USBDEVFS_RESET = 21780
+
+if __name__ == "__main__":
+    for device in sys.argv[1:]:
+        print "resetting device:", device
+        try:
+            f = open(device, 'w', os.O_WRONLY)
+            fcntl.ioctl(f, USBDEVFS_RESET, 0)
+        except Exception, msg:
+            print "failed to reset device:", msg
