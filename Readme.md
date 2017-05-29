@@ -49,8 +49,8 @@ At the moment, the library supports two [BLE](https://en.wikipedia.org/wiki/Blue
 ## 29 May 2017
 
 Code:
-	* Fixed missing `createMicrobotFromUUID` method in the PyBlueZ stack (kudos to @javaftper)
+* Fixed missing `createMicrobotFromUUID` method in the PyBlueZ stack (kudos to @javaftper)
 
 Docker container:
-	* Now has embedded PyBlueZ support
-	* Updated to the latest revision of code
+* Now has embedded PyBlueZ support
+* Updated to the latest revision of code
