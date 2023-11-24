@@ -1,3 +1,7 @@
+# DEPRECATED
+
+Microbot is no longer around as a company and I am not using any of their hardware anymore.
+
 # Open Source Microbot Push Server
 
 [![Build Status](https://travis-ci.org/VRGhost/PyPush.svg?branch=master)](https://travis-ci.org/VRGhost/PyPush)
